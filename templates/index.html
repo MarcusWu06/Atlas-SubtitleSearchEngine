@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — Search Inside YouTube Subtitles</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/index.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-title">Atlas</span>
+        <span class="brand-subtitle">Subtitle Search Engine</span>
+      </div>
+    </div>
+
+    <nav class="top-nav">
+      <a href="/" class="nav-link active">Home</a>
+      <a href="/results?q=Gemini" class="nav-link">Explore</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <div class="hero-badge">Local • Searchable • Auditable</div>
+
+    <h1 class="hero-title">
+      Search inside real YouTube subtitles, not just video titles.
+    </h1>
+
+    <p class="hero-text">
+      Atlas helps you find exact spoken moments, jump to the right timestamp,
+      and preview context before opening the full video.
+    </p>
+
+    <form id="search-form" class="search-panel">
+      <div class="search-input-wrap">
+        <input
+          id="search-input"
+          class="search-input"
+          type="text"
+          placeholder="Search a phrase, topic, or spoken quote"
+          autocomplete="off"
+        />
+        <button class="search-button" type="submit">Search</button>
+      </div>
+
+      <label class="exact-toggle">
+  <input id="exact-search-toggle" type="checkbox" />
+  <span>Exact phrase</span>
+</label>
+
+      <div class="search-hints">
+        <span>Try:</span>
+        <button type="button" class="hint-chip" data-query="artificial intelligence">artificial intelligence</button>
+        <button type="button" class="hint-chip" data-query="Gemini">Gemini</button>
+        <button type="button" class="hint-chip" data-query="deepfake">deepfake</button>
+      </div>
+    </form>
+
+    <section class="feature-grid">
+      <article class="feature-card">
+        <h2>Precise timestamp search</h2>
+        <p>Find the exact line and jump to the matching moment in a video.</p>
+      </article>
+
+      <article class="feature-card">
+        <h2>Raw subtitles preserved</h2>
+        <p>Every result comes from locally stored subtitle files you can inspect later.</p>
+      </article>
+
+      <article class="feature-card">
+        <h2>Built for scalable indexing</h2>
+        <p>Designed for playlists, channels, and future AI-assisted summarisation.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="/static/js/home.js"></script>
+</body>
+</html>

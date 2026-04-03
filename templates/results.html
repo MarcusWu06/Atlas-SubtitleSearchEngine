@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — Results</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/results.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="brand brand-link">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-title">Atlas</span>
+        <span class="brand-subtitle">Subtitle Search Engine</span>
+      </div>
+      <label class="exact-toggle">
+  <input id="exact-search-toggle" type="checkbox" />
+  <span>Exact phrase</span>
+</label>
+    </a>
+
+    <form id="results-search-form" class="results-search-bar">
+      <input
+        id="results-search-input"
+        class="search-input compact"
+        type="text"
+        placeholder="Search subtitles"
+        autocomplete="off"
+      />
+      <button class="search-button compact" type="submit">Search</button>
+    </form>
+  </header>
+
+  <main class="results-page">
+    <section class="results-head">
+      <div>
+        <p class="results-kicker">Search results</p>
+        <h1 id="results-title" class="results-title">Loading results...</h1>
+      </div>
+      <div id="results-meta" class="results-meta"></div>
+    </section>
+
+    <div id="message-box" class="message-box hidden"></div>
+
+<nav id="pagination-top" class="pagination pagination-top"></nav>
+<section id="results-grid" class="results-grid"></section>
+<nav id="pagination" class="pagination"></nav>
+  </main>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="/static/js/results.js"></script>
+</body>
+</html>

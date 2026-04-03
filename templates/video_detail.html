@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — Video Detail</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/video_detail.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-title">Atlas</span>
+        <span class="brand-subtitle">Subtitle Search Engine</span>
+      </div>
+    </div>
+
+    <nav class="top-nav">
+      <a href="/" class="nav-link">Home</a>
+      <a href="/library" class="nav-link">Library</a>
+    </nav>
+  </header>
+
+  <main class="detail-shell">
+    <section id="results-return-bar" class="results-return-bar">
+  <div class="results-return-inner">
+    <div class="results-return-copy">
+      <div class="results-return-label">SEARCH RESULTS</div>
+      <div id="results-return-text" class="results-return-text">Back to results</div>
+    </div>
+
+    <a id="back-to-results-sticky" class="results-return-btn" href="/results">
+      Back to results
+    </a>
+  </div>
+</section>
+    <section class="detail-hero">
+      <div class="detail-hero-top">
+        <div>
+          <div class="detail-badge">VIDEO DETAIL</div>
+          <h1 id="video-detail-title" class="detail-title">Loading video...</h1>
+          <div id="video-detail-meta" class="detail-meta"></div>
+        </div>
+
+        <div class="detail-controls">
+  <div class="detail-sort-wrap">
+    <button id="sort-timeline" type="button" class="sort-chip">Timeline</button>
+    <button id="sort-best" type="button" class="sort-chip">Best match</button>
+  </div>
+</div>
+      </div>
+
+      <div class="detail-grid">
+        <aside class="detail-sidebar-card">
+          <div class="sidebar-label">Video overview</div>
+          <div id="video-info"></div>
+        </aside>
+
+        <section class="detail-main-column">
+          <section id="detail-player-card" class="detail-player-card">
+            <div class="panel-header">
+              <div>
+                <div class="panel-label">Preview player</div>
+                <div class="panel-title">Watch matching moments</div>
+              </div>
+              <div id="player-time-label" class="panel-count"></div>
+            </div>
+
+            <div id="player-shell" class="player-shell">
+              <div id="detail-player" class="detail-player"></div>
+            </div>
+          </section>
+
+          <section class="detail-main-card">
+            <div class="panel-header">
+              <div>
+                <div class="panel-label">Matching moments</div>
+                <div class="panel-title">Transcript navigator</div>
+              </div>
+              <div id="cluster-count-label" class="panel-count"></div>
+            </div>
+
+            <div id="video-clusters" class="cluster-list"></div>
+          </section>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    window.__VIDEO_ID__ = "{{ video_id }}";
+  </script>
+  <script src="/static/js/video_detail.js"></script>
+</body>
+</html>

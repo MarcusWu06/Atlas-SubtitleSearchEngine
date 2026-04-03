@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Local database files
+data/index/atlas.db
+data/index/atlas.db-shm
+data/index/atlas.db-wal
+
+# Downloaded local subtitle/cache data
+data/subtitles/
+data/cache/
+
+# Logs
+*.log

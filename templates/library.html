@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — Library</title>
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/library.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="brand brand-link">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-title">Atlas</span>
+        <span class="brand-subtitle">Subtitle Search Engine</span>
+      </div>
+    </a>
+
+    <nav class="library-nav">
+      <a href="/" class="library-nav-link">Search</a>
+      <a href="/library" class="library-nav-link active">Library</a>
+    </nav>
+  </header>
+
+  <main class="library-page">
+    <section class="library-hero">
+      <p class="library-kicker">Library</p>
+      <h1 class="library-title">Add YouTube sources into Atlas.</h1>
+      <p class="library-text">
+        Import playlist URLs into your Atlas library so their subtitles can be indexed
+        and searched globally.
+      </p>
+    </section>
+
+    <section class="library-panel">
+      <form id="library-form" class="library-form">
+        <div class="library-form-row">
+          <div class="field-group field-type">
+            <label for="source-type">Source type</label>
+            <select id="source-type" class="library-select">
+              <option value="playlist">Playlist</option>
+            </select>
+          </div>
+
+          <div class="field-group field-url">
+            <label for="source-url">YouTube URL</label>
+            <input
+              id="source-url"
+              class="library-input"
+              type="url"
+              placeholder="Paste a YouTube playlist URL"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <div class="field-group field-title">
+            <label for="source-title">Optional title</label>
+            <input
+              id="source-title"
+              class="library-input"
+              type="text"
+              placeholder="e.g. BBC AI playlist"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+
+        <div class="library-actions">
+          <button type="submit" class="library-button">Add to Library</button>
+        </div>
+      </form>
+
+      <div id="library-message" class="library-message hidden"></div>
+    </section>
+
+    <section class="library-list-section">
+      <div class="library-list-head">
+        <div>
+          <p class="library-kicker">Current sources</p>
+          <h2 class="library-section-title">Your Library</h2>
+        </div>
+        <div id="library-count" class="library-count">Loading...</div>
+      </div>
+
+      <div id="library-list" class="library-list"></div>
+    </section>
+  </main>
+
+  <script src="/static/js/library.js"></script>
+</body>
+</html>

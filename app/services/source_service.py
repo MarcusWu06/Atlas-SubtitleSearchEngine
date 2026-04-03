@@ -4,6 +4,8 @@ from fastapi import HTTPException
 
 from app.db.database import get_connection
 from app.models.schemas import SourceCreateRequest
+from pathlib import Path
+from app.core.config import settings
 
 
 class SourceService:
@@ -117,7 +119,6 @@ class SourceService:
         self.get_source_by_id(source_id)
 
         with get_connection() as conn:
-            # 1) 找到这个 source 关联的所有视频
             source_video_rows = conn.execute(
                 """
                 SELECT video_id
@@ -128,7 +129,6 @@ class SourceService:
             ).fetchall()
             source_video_ids = [row["video_id"] for row in source_video_rows]
 
-            # 2) 只找“这个 source 独有”的视频
             orphan_video_ids: list[str] = []
             for video_id in source_video_ids:
                 ref_count = conn.execute(
@@ -143,7 +143,6 @@ class SourceService:
                 if ref_count == 1:
                     orphan_video_ids.append(video_id)
 
-            # 3) 先删这个 source 的关联记录
             conn.execute(
                 "DELETE FROM source_videos WHERE source_id = ?",
                 (source_id,),
@@ -157,7 +156,6 @@ class SourceService:
                 (source_id,),
             )
 
-            # 4) 再删那些只属于这个 source 的底层视频/字幕数据
             for video_id in orphan_video_ids:
                 conn.execute(
                     "DELETE FROM subtitle_segments_fts WHERE video_id = ?",
@@ -171,6 +169,18 @@ class SourceService:
                     "DELETE FROM videos WHERE id = ?",
                     (video_id,),
                 )
+
+        # delete local subtitle folders after DB cleanup
+        subtitles_root = settings.SUBTITLES_DIR
+        for video_id in orphan_video_ids:
+            video_dir = subtitles_root / video_id
+            if video_dir.exists() and video_dir.is_dir():
+                for path in sorted(video_dir.rglob("*"), reverse=True):
+                    if path.is_file() or path.is_symlink():
+                        path.unlink(missing_ok=True)
+                    elif path.is_dir():
+                        path.rmdir()
+                video_dir.rmdir()
 
     def _build_source_key(self, source_type: str, source_url: str) -> str:
         parsed = urlparse(source_url)

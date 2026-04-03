@@ -1,13 +1,13 @@
 import json
-from pathlib import Path
 
+from app.core.config import settings
 from app.db.database import get_connection
 from app.utils.vtt_parser import parse_vtt
 
 
 class SubtitleService:
     def ingest_downloaded_subtitles(self) -> dict:
-        subtitles_root = Path("data/subtitles")
+        subtitles_root = settings.SUBTITLES_DIR
         if not subtitles_root.exists():
             return {"videos": 0, "segments": 0}
 
@@ -52,7 +52,7 @@ class SubtitleService:
 
         return {"videos": total_videos, "segments": total_segments}
 
-    def _upsert_video(self, meta: dict, chosen: dict, subtitle_file: Path) -> None:
+    def _upsert_video(self, meta: dict, chosen: dict, subtitle_file) -> None:
         with get_connection() as conn:
             conn.execute(
                 """
@@ -138,7 +138,7 @@ class SubtitleService:
             return len(inserted_rows)
 
     def ingest_video(self, video_id: str) -> dict:
-        video_dir = Path("data/subtitles") / video_id
+        video_dir = settings.SUBTITLES_DIR / video_id
         if not video_dir.exists():
             return {"video_id": video_id, "inserted": 0, "status": "missing"}
 
@@ -172,5 +172,6 @@ class SubtitleService:
         inserted = self._replace_segments(meta["id"], segments)
 
         return {"video_id": video_id, "inserted": inserted, "status": "ok"}
+
 
 subtitle_service = SubtitleService()

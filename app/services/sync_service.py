@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
@@ -9,7 +10,10 @@ from app.services.youtube_service import youtube_service
 
 
 class SyncService:
-    def sync_source(self, source_id: int) -> dict:
+    async def sync_source(self, source_id: int) -> dict:
+        return await self._sync_source_async(source_id)
+
+    async def _sync_source_async(self, source_id: int) -> dict:
         source = source_service.get_source_by_id(source_id)
 
         if source["source_type"] != "playlist":
@@ -26,15 +30,14 @@ class SyncService:
             sync_run_id = cursor.lastrowid
 
         try:
-            entries = youtube_service.get_playlist_entries(source["source_url"])
+            entries = await asyncio.to_thread(
+                youtube_service.get_playlist_entries,
+                source["source_url"],
+            )
             now = datetime.now(UTC).isoformat()
 
             total_discovered = len(entries)
             new_videos = 0
-            processed = 0
-            succeeded = 0
-            failed = 0
-            errors: list[str] = []
 
             with get_connection() as conn:
                 existing_rows = conn.execute(
@@ -101,53 +104,16 @@ class SyncService:
                         (source_id,),
                     )
 
-            for video_id in discovered_new_video_ids:
-                processed += 1
-                sync_status = "failed"
-                last_error = None
+            results = await self._process_new_videos_concurrently(
+                source_id=source_id,
+                video_ids=discovered_new_video_ids,
+                now=now,
+            )
 
-                try:
-                    download_result = youtube_service.sync_single_video_by_id(video_id)
-                    download_status = download_result.get("status", "failed")
-
-                    if download_status == "success":
-                        ingest_result = subtitle_service.ingest_video(video_id)
-                        ingest_status = ingest_result.get("status")
-
-                        if ingest_status == "ok":
-                            sync_status = "success"
-                            last_error = None
-                            succeeded += 1
-                        else:
-                            sync_status = "failed"
-                            last_error = f"Ingest failed: {ingest_status}"
-                            failed += 1
-
-                    elif download_status == "no_subtitles":
-                        sync_status = "no_subtitles"
-                        last_error = "No subtitles available"
-                        failed += 1
-
-                    else:
-                        sync_status = "failed"
-                        last_error = f"Download failed: {download_status}"
-                        failed += 1
-
-                except Exception as exc:
-                    sync_status = "failed"
-                    last_error = str(exc)
-                    failed += 1
-                    errors.append(f"{video_id}: {exc}")
-
-                with get_connection() as conn:
-                    conn.execute(
-                        """
-                        UPDATE source_videos
-                        SET sync_status = ?, last_error = ?, last_seen_at = ?
-                        WHERE source_id = ? AND video_id = ?
-                        """,
-                        (sync_status, last_error, now, source_id, video_id),
-                    )
+            processed = len(results)
+            succeeded = sum(1 for item in results if item["sync_status"] == "success")
+            failed = processed - succeeded
+            errors = [item["error_summary"] for item in results if item["error_summary"]]
 
             with get_connection() as conn:
                 conn.execute(
@@ -221,6 +187,95 @@ class SyncService:
             return {
                 "source_id": source_id,
                 "sync_run": self._sync_run_to_dict(row),
+            }
+
+    async def _process_new_videos_concurrently(
+        self,
+        source_id: int,
+        video_ids: list[str],
+        now: str,
+    ) -> list[dict]:
+        if not video_ids:
+            return []
+
+        max_workers = max(1, youtube_service._semaphore._value)
+        semaphore = asyncio.Semaphore(max_workers)
+
+        tasks = [
+            self._process_single_new_video(
+                semaphore=semaphore,
+                source_id=source_id,
+                video_id=video_id,
+                now=now,
+            )
+            for video_id in video_ids
+        ]
+
+        return await asyncio.gather(*tasks)
+
+    async def _process_single_new_video(
+        self,
+        semaphore: asyncio.Semaphore,
+        source_id: int,
+        video_id: str,
+        now: str,
+    ) -> dict:
+        async with semaphore:
+            sync_status = "failed"
+            last_error = None
+            error_summary = None
+
+            try:
+                download_result = await asyncio.to_thread(
+                    youtube_service.sync_single_video_by_id,
+                    video_id,
+                )
+                download_status = download_result.get("status", "failed")
+
+                if download_status == "success":
+                    ingest_result = await asyncio.to_thread(
+                        subtitle_service.ingest_video,
+                        video_id,
+                    )
+                    ingest_status = ingest_result.get("status")
+
+                    if ingest_status == "ok":
+                        sync_status = "success"
+                    else:
+                        sync_status = "failed"
+                        last_error = f"Ingest failed: {ingest_status}"
+                        error_summary = f"{video_id}: {last_error}"
+
+                elif download_status == "no_subtitles":
+                    sync_status = "no_subtitles"
+                    last_error = "No subtitles available"
+                    error_summary = f"{video_id}: {last_error}"
+
+                else:
+                    sync_status = "failed"
+                    last_error = f"Download failed: {download_status}"
+                    error_summary = f"{video_id}: {last_error}"
+
+            except Exception as exc:
+                sync_status = "failed"
+                last_error = str(exc)
+                error_summary = f"{video_id}: {exc}"
+
+            with get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE source_videos
+                    SET sync_status = ?, last_error = ?, last_seen_at = ?
+                    WHERE source_id = ? AND video_id = ?
+                    """,
+                    (sync_status, last_error, now, source_id, video_id),
+                )
+
+            return {
+                "video_id": video_id,
+                "sync_status": sync_status,
+                "last_error": last_error,
+                "error_summary": error_summary,
             }
 
     def _sync_run_to_dict(self, row) -> dict:

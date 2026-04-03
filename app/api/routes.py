@@ -105,7 +105,7 @@ async def get_source(source_id: int) -> SourceDetailResponse:
 
 @router.post("/sources/{source_id}/sync", response_model=SourceSyncResponse)
 async def sync_source(source_id: int) -> SourceSyncResponse:
-    result = sync_service.sync_source(source_id)
+    result = await sync_service.sync_source(source_id)
     return SourceSyncResponse(
         source_id=result["source_id"],
         sync_run=SyncRunResponse(**result["sync_run"]),

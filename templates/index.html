@@ -4,79 +4,94 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Atlas — Search Inside YouTube Subtitles</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/index.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <div class="brand-mark">A</div>
-      <div class="brand-text">
-        <span class="brand-title">Atlas</span>
-        <span class="brand-subtitle">Subtitle Search Engine</span>
-      </div>
+  <div class="home-page">
+    <div class="home-bg" aria-hidden="true">
+      <div class="home-bg-image"></div>
+      <div class="home-bg-shade"></div>
+      <div class="home-bg-grain"></div>
+
+      <div class="petal petal-a"></div>
+      <div class="petal petal-b"></div>
+      <div class="petal petal-c"></div>
+      <div class="petal petal-d"></div>
+      <div class="petal petal-e"></div>
     </div>
 
-    <nav class="top-nav">
-      <a href="/" class="nav-link active">Home</a>
-      <a href="/results?q=Gemini" class="nav-link">Explore</a>
-    </nav>
-  </header>
+    <header class="site-header">
+      <a href="/" class="brand">
+        <div class="brand-text">
+          <span class="brand-title">ATLAS</span>
+          <span class="brand-subtitle">Subtitle Search Engine</span>
+        </div>
+      </a>
 
-  <main class="hero">
-    <div class="hero-badge">Local • Searchable • Auditable</div>
+      <nav class="top-nav">
+        <a href="/results?q=Gemini" class="nav-link">Results</a>
+        <a href="/library" class="nav-link">Library</a>
+      </nav>
+    </header>
 
-    <h1 class="hero-title">
-      Search inside real YouTube subtitles, not just video titles.
-    </h1>
+    <main class="hero">
+      <section class="hero-copy">
+        <p class="hero-kicker">ATLAS</p>
 
-    <p class="hero-text">
-      Atlas helps you find exact spoken moments, jump to the right timestamp,
-      and preview context before opening the full video.
-    </p>
+        <h1 class="hero-title">
+          From a keyword to a moment.
+        </h1>
 
-    <form id="search-form" class="search-panel">
-      <div class="search-input-wrap">
-        <input
-          id="search-input"
-          class="search-input"
-          type="text"
-          placeholder="Search a phrase, topic, or spoken quote"
-          autocomplete="off"
-        />
-        <button class="search-button" type="submit">Search</button>
-      </div>
+        <p class="hero-text">
+          Follow a phrase, move directly to the second that matters, and surface the moment with AI.
+        </p>
 
-      <label class="exact-toggle">
-  <input id="exact-search-toggle" type="checkbox" />
-  <span>Exact phrase</span>
-</label>
+        <form id="search-form" class="search-panel">
+          <div class="search-input-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.44 4.44 1.06-1.06-4.44-4.44A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10a5 5 0 0 1 0-10Z"
+                fill="currentColor"
+              />
+            </svg>
 
-      <div class="search-hints">
-        <span>Try:</span>
-        <button type="button" class="hint-chip" data-query="artificial intelligence">artificial intelligence</button>
-        <button type="button" class="hint-chip" data-query="Gemini">Gemini</button>
-        <button type="button" class="hint-chip" data-query="deepfake">deepfake</button>
-      </div>
-    </form>
+            <input
+              id="search-input"
+              class="search-input"
+              type="text"
+              placeholder="Search a phrase, topic, or spoken quote"
+              autocomplete="off"
+            />
 
-    <section class="feature-grid">
-      <article class="feature-card">
-        <h2>Precise timestamp search</h2>
-        <p>Find the exact line and jump to the matching moment in a video.</p>
-      </article>
+            <button class="search-button" type="submit">Search</button>
+          </div>
 
-      <article class="feature-card">
-        <h2>Raw subtitles preserved</h2>
-        <p>Every result comes from locally stored subtitle files you can inspect later.</p>
-      </article>
+          <div class="search-meta">
+            <label class="exact-toggle">
+              <input id="exact-search-toggle" type="checkbox" />
+              <span>Exact phrase</span>
+            </label>
 
-      <article class="feature-card">
-        <h2>Built for scalable indexing</h2>
-        <p>Designed for playlists, channels, and future AI-assisted summarisation.</p>
-      </article>
-    </section>
-  </main>
+            <div class="search-hints">
+              <span class="hints-label">Try</span>
+              <button type="button" class="hint-chip" data-query="artificial intelligence">artificial intelligence</button>
+              <button type="button" class="hint-chip" data-query="Gemini">Gemini</button>
+              <button type="button" class="hint-chip" data-query="deepfake">deepfake</button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
 
   <script src="/static/js/home.js"></script>
 </body>

@@ -4,89 +4,112 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Atlas — Library</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/library.css" />
 </head>
 <body>
-  <header class="site-header">
-    <a href="/" class="brand brand-link">
-      <div class="brand-mark">A</div>
-      <div class="brand-text">
-        <span class="brand-title">Atlas</span>
-        <span class="brand-subtitle">Subtitle Search Engine</span>
-      </div>
+  <div class="library-page">
+    <div class="library-bg" aria-hidden="true">
+      <div class="library-bg-image"></div>
+      <div class="library-bg-shade"></div>
+      <div class="library-bg-grain"></div>
+    </div>
+
+    <header class="atlas-nav">
+  <div class="atlas-nav-inner">
+    <a href="/" class="atlas-nav-brand">
+      <span class="atlas-nav-logo">ATLAS</span>
+      <span class="atlas-nav-sub">Subtitle Search Engine</span>
     </a>
 
-    <nav class="library-nav">
-      <a href="/" class="library-nav-link">Search</a>
-      <a href="/library" class="library-nav-link active">Library</a>
+    <nav class="atlas-nav-menu" aria-label="Primary">
+      <a href="/" class="atlas-nav-link">Home</a>
+      <a href="/library" class="atlas-nav-link atlas-nav-link-active">Library</a>
+      <a href="/about" class="atlas-nav-link">About</a>
     </nav>
-  </header>
 
-  <main class="library-page">
-    <section class="library-hero">
-      <p class="library-kicker">Library</p>
-      <h1 class="library-title">Add YouTube sources into Atlas.</h1>
-      <p class="library-text">
-        Import playlist URLs into your Atlas library so their subtitles can be indexed
-        and searched globally.
-      </p>
-    </section>
+    <div class="atlas-nav-tools">
+      <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
+        <span class="atlas-nav-orb-core"></span>
+      </button>
+    </div>
+  </div>
+</header>
 
-    <section class="library-panel">
-      <form id="library-form" class="library-form">
-        <div class="library-form-row">
-          <div class="field-group field-type">
-            <label for="source-type">Source type</label>
-            <select id="source-type" class="library-select">
-              <option value="playlist">Playlist</option>
-            </select>
+    <main class="library-shell">
+      <section class="library-hero">
+        <div class="hero-copy">
+          <p class="hero-kicker">Library</p>
+          <h1 class="hero-title">Add YouTube sources into Atlas.</h1>
+          <p class="hero-subtitle">
+            Import playlist URLs into your Atlas library so their subtitles can be indexed and searched globally.
+          </p>
+        </div>
+      </section>
+
+      <section class="add-source-panel">
+        <form id="library-form" class="add-source-form">
+          <div class="form-grid">
+            <div class="form-field small">
+              <label class="field-label" for="source-type">Source type</label>
+              <select id="source-type" class="field-control select-control">
+                <option value="playlist">Playlist</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label" for="source-url">YouTube URL</label>
+              <input
+                id="source-url"
+                class="field-control"
+                type="url"
+                placeholder="Paste a YouTube playlist URL"
+                autocomplete="off"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="field-label" for="source-title">Optional title</label>
+              <input
+                id="source-title"
+                class="field-control"
+                type="text"
+                placeholder="e.g. BBC AI playlist"
+                autocomplete="off"
+              />
+            </div>
           </div>
 
-          <div class="field-group field-url">
-            <label for="source-url">YouTube URL</label>
-            <input
-              id="source-url"
-              class="library-input"
-              type="url"
-              placeholder="Paste a YouTube playlist URL"
-              autocomplete="off"
-              required
-            />
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">Add to Library</button>
           </div>
+        </form>
 
-          <div class="field-group field-title">
-            <label for="source-title">Optional title</label>
-            <input
-              id="source-title"
-              class="library-input"
-              type="text"
-              placeholder="e.g. BBC AI playlist"
-              autocomplete="off"
-            />
+        <div id="library-message" class="library-message hidden"></div>
+      </section>
+
+      <section class="library-list-section">
+        <div class="library-list-head">
+          <div>
+            <p class="section-kicker">Stored sources</p>
+            <h2 class="library-section-title">Your Library</h2>
           </div>
+          <div id="library-count" class="library-count">Loading...</div>
         </div>
 
-        <div class="library-actions">
-          <button type="submit" class="library-button">Add to Library</button>
-        </div>
-      </form>
-
-      <div id="library-message" class="library-message hidden"></div>
-    </section>
-
-    <section class="library-list-section">
-      <div class="library-list-head">
-        <div>
-          <p class="library-kicker">Current sources</p>
-          <h2 class="library-section-title">Your Library</h2>
-        </div>
-        <div id="library-count" class="library-count">Loading...</div>
-      </div>
-
-      <div id="library-list" class="library-list"></div>
-    </section>
-  </main>
+        <div id="library-list" class="library-list"></div>
+      </section>
+    </main>
+  </div>
 
   <script src="/static/js/library.js"></script>
 </body>

@@ -35,7 +35,14 @@ form?.addEventListener("submit", (event) => {
 
 function showMessage(message) {
   if (!messageBox) return;
-  messageBox.textContent = message;
+
+  const text = String(message || "").trim();
+  if (!text) {
+    hideMessage();
+    return;
+  }
+
+  messageBox.textContent = text;
   messageBox.classList.remove("hidden");
 }
 
@@ -680,9 +687,12 @@ const response = await fetch(`/api/search?${searchParams.toString()}`);
     resultsMeta.textContent =
       `${data.total_hits} raw hits • ${data.total_videos} videos • Page ${data.page} of ${data.total_pages || 1}`;
 
-    if (data.message && data.message !== "ok") {
-      showMessage(data.message);
-    }
+    const responseMessage = String(data.message || "").trim();
+      if (responseMessage && responseMessage.toLowerCase() !== "ok") {
+      showMessage(responseMessage);
+          } else {
+      hideMessage();
+      }
 
     if (!data.groups.length) {
       const empty = document.createElement("div");

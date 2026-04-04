@@ -4,7 +4,7 @@ const exactToggle = document.getElementById("exact-search-toggle");
 const chips = document.querySelectorAll(".hint-chip");
 
 function goToResults(query) {
-  const q = query.trim();
+  const q = (query || "").trim();
   if (!q) return;
 
   const params = new URLSearchParams();
@@ -19,9 +19,7 @@ function goToResults(query) {
 
 form?.addEventListener("submit", (event) => {
   event.preventDefault();
-  const query = input?.value.trim();
-  if (!query) return;
-  goToResults(query);
+  goToResults(input?.value || "");
 });
 
 chips.forEach((chip) => {

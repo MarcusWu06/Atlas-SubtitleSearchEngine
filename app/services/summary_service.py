@@ -79,25 +79,29 @@ class SummaryService:
             return self._call_ollama(text, query)
         except Exception as exc:
             print(f"[summary_service] Ollama failed, fallback enabled: {exc}")
-            return self._build_placeholder_summary(text, query)
+            return self._build_placeholder_summary(text)
 
     def _call_ollama(self, full_text: str, query: str) -> str:
         if query:
             prompt = (
-                "You are helping explain why a retrieved subtitle segment is relevant to a user's search query.\n"
-                "Write a concise 1-2 sentence relevance summary.\n"
-                "Focus on how the segment relates to the query, not just what it says.\n"
+                "You summarize subtitle context from a YouTube video.\n"
+                "Write a concise 1-2 sentence summary of what is being discussed in the subtitle context.\n"
+                "Use the search query only as a light hint for the topic, but do not explain relevance to the query.\n"
+                "Focus on the actual content of the subtitles.\n"
                 "Be factual, clear, and brief.\n"
-                "Do not invent details that are not supported by the subtitle context.\n\n"
-                f"User query:\n{query}\n\n"
+                "Do not invent details that are not supported by the subtitle context.\n"
+                "Do not write phrases like 'this segment is relevant to the query' or 'this subtitle segment mentions'.\n\n"
+                f"Search query (topic hint only):\n{query}\n\n"
                 f"Subtitle context:\n{full_text}"
             )
         else:
             prompt = (
-                "You are helping summarize subtitle context from a YouTube video.\n"
+                "You summarize subtitle context from a YouTube video.\n"
                 "Write a concise 1-2 sentence summary of what is being discussed.\n"
+                "Focus on the actual content of the subtitles.\n"
                 "Be factual, clear, and brief.\n"
-                "Do not repeat transcript fragments.\n\n"
+                "Do not invent details that are not supported by the subtitle context.\n"
+                "Do not repeat transcript fragments word-for-word unless necessary.\n\n"
                 f"Subtitle context:\n{full_text}"
             )
 
@@ -120,16 +124,11 @@ class SummaryService:
 
         return content
 
-    def _build_placeholder_summary(self, full_text: str, query: str) -> str:
-        if not query:
-            if len(full_text) <= 240:
-                return full_text
-            return full_text[:240].rstrip() + "..."
-
+    def _build_placeholder_summary(self, full_text: str) -> str:
         compact = " ".join(full_text.split())
-        if len(compact) > 180:
-            compact = compact[:180].rstrip() + "..."
-        return f"This segment appears relevant to '{query}' and discusses: {compact}"
+        if len(compact) <= 240:
+            return compact
+        return compact[:240].rstrip() + "..."
 
     def _get_cached_summary(
         self,

@@ -179,6 +179,16 @@ function createSourceCard(source) {
   const actions = document.createElement("div");
   actions.className = "library-card-actions";
 
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.className = "library-action-btn";
+  renameBtn.textContent = "Rename";
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.type = "button";
+  toggleBtn.className = "library-action-btn";
+  toggleBtn.textContent = source.is_active ? "Disable" : "Enable";
+
   const syncBtn = document.createElement("button");
   syncBtn.type = "button";
   syncBtn.className = "library-action-btn primary";
@@ -199,30 +209,90 @@ function createSourceCard(source) {
   deleteBtn.className = "library-action-btn";
   deleteBtn.textContent = "Delete";
 
-  actions.append(syncBtn, runsBtn, videosBtn, deleteBtn);
+  actions.append(renameBtn, toggleBtn, syncBtn, runsBtn, videosBtn, deleteBtn);
 
   card.innerHTML = `
-    <div class="library-card-top">
-      <div>
-        <h3 class="library-card-title">${escapeHtml(title)}</h3>
-        <div class="library-card-subtitle">${escapeHtml(source.source_url)}</div>
+  <div class="library-card-top">
+    <div>
+      <h3 class="library-card-title">${escapeHtml(title)}</h3>
+      <div class="library-card-subtitle">${escapeHtml(source.source_url)}</div>
+    </div>
+
+    <div class="library-card-top-pills">
+      <div class="library-state-pill ${source.is_active ? "enabled" : "disabled"}">
+        ${source.is_active ? "Enable" : "Disable"}
       </div>
       <div class="library-pill">${escapeHtml(source.source_type)}</div>
     </div>
+  </div>
 
-    <div class="library-card-meta">
-      <div class="library-pill">${source.is_active ? "Active" : "Inactive"}</div>
-      <div class="library-pill">Videos: ${source.video_count ?? 0}</div>
-      <div class="library-pill">Available: ${source.available_video_count ?? 0}</div>
-      <div class="library-pill">Runs: ${source.sync_run_count ?? 0}</div>
-      <div class="library-pill">Created: ${escapeHtml(formatDate(source.created_at))}</div>
-      <div class="library-pill">Last sync: ${escapeHtml(formatDate(source.last_synced_at))}</div>
-    </div>
-  `;
+  <div class="library-card-meta">
+    <div class="library-pill">Videos: ${source.video_count ?? 0}</div>
+    <div class="library-pill">Available: ${source.available_video_count ?? 0}</div>
+    <div class="library-pill">Runs: ${source.sync_run_count ?? 0}</div>
+    <div class="library-pill">Created: ${escapeHtml(formatDate(source.created_at))}</div>
+    <div class="library-pill">Last sync: ${escapeHtml(formatDate(source.last_synced_at))}</div>
+  </div>
+`;
 
   card.append(actions, body);
 
+  renameBtn.addEventListener("click", async () => {
+    const nextTitle = window.prompt("Rename this source:", source.title || source.source_key || "");
+    if (nextTitle === null) return;
+
+    const trimmed = nextTitle.trim();
+    hideMessage();
+    renameBtn.disabled = true;
+    renameBtn.textContent = "Saving...";
+
+    try {
+      await fetchJson(`/api/sources/${source.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed || null })
+      });
+
+      showMessage("Source title updated.");
+      await loadSources();
+    } catch (error) {
+      showMessage(error.message || "Failed to rename source.", "error");
+      console.error(error);
+    } finally {
+      renameBtn.disabled = false;
+      renameBtn.textContent = "Rename";
+    }
+  });
+
+  toggleBtn.addEventListener("click", async () => {
+    hideMessage();
+    toggleBtn.disabled = true;
+    toggleBtn.textContent = source.is_active ? "Disabling..." : "Enabling...";
+
+    try {
+      await fetchJson(`/api/sources/${source.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !source.is_active })
+      });
+
+      showMessage(source.is_active ? "Source disabled." : "Source enabled.");
+      await loadSources();
+    } catch (error) {
+      showMessage(error.message || "Failed to update source status.", "error");
+      console.error(error);
+    } finally {
+      toggleBtn.disabled = false;
+      toggleBtn.textContent = source.is_active ? "Disable" : "Enable";
+    }
+  });
+
   syncBtn.addEventListener("click", async () => {
+    if (!source.is_active) {
+      showMessage("This source is inactive. Enable it before syncing.", "error");
+      return;
+    }
+
     syncBtn.disabled = true;
     syncBtn.textContent = "Syncing...";
     hideMessage();
@@ -271,7 +341,9 @@ function createSourceCard(source) {
   });
 
   deleteBtn.addEventListener("click", async () => {
-    const confirmed = window.confirm("Delete this source from Library?");
+    const confirmed = window.confirm("Delete this source from Library?\n" +
+        "\n" +
+        "This will also remove related saved moments and videos from Archive.");
     if (!confirmed) return;
 
     deleteBtn.disabled = true;

@@ -316,6 +316,23 @@ body {
   transform: translateY(-1px);
 }
 
+.video-info-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.video-link-btn.secondary {
+  border: 1px solid rgba(19, 30, 44, 0.08);
+  background: #fff;
+  color: var(--text);
+}
+
+.video-link-btn.secondary:hover {
+  background: #fcfdff;
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;

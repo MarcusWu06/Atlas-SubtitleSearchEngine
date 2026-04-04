@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -70,6 +70,7 @@ class SourceSyncResponse(BaseModel):
     source_id: int
     sync_run: SyncRunResponse
 
+
 class SourceVideoResponse(BaseModel):
     id: int
     source_id: int
@@ -117,6 +118,7 @@ class ContextWindowResponse(BaseModel):
     segments: list[ContextSegmentResponse]
     full_text: str
 
+
 class SummarizeContextRequest(BaseModel):
     video_id: str
     start_seconds: float
@@ -132,3 +134,40 @@ class SummarizeContextResponse(BaseModel):
     segment_count: int
     full_text: str
     summary: str
+
+
+class SourceUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class SaveMomentRequest(BaseModel):
+    video_id: str
+    title: Optional[str] = None
+    channel: Optional[str] = None
+    query: Optional[str] = None
+    start_seconds: int
+    end_seconds: int
+    display_text: Optional[str] = None
+    watch_url: Optional[str] = None
+
+class SaveVideoRequest(BaseModel):
+    video_id: str
+    title: Optional[str] = None
+    channel: Optional[str] = None
+    query: Optional[str] = None
+    display_text: Optional[str] = None
+    watch_url: Optional[str] = None
+
+class SavedItemResponse(BaseModel):
+    id: int
+    item_type: str
+    video_id: str
+    title: Optional[str] = None
+    channel: Optional[str] = None
+    query: Optional[str] = None
+    start_seconds: Optional[int] = None
+    end_seconds: Optional[int] = None
+    display_text: Optional[str] = None
+    watch_url: Optional[str] = None
+    created_at: str

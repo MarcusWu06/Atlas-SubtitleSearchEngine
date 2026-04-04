@@ -276,6 +276,9 @@ def _extract_sentence_like_preview_from_context(text: str, max_chars: int = 360)
 class SearchService:
     MERGE_GAP_SECONDS = 3.0
     CLUSTER_WINDOW_SECONDS = 30.0
+    DETAIL_CONTEXT_BEFORE_SECONDS = 2.0
+    DETAIL_CONTEXT_AFTER_SECONDS = 5.0
+    DETAIL_DISPLAY_MAX_CHARS = 260
 
     def _build_cluster_context_preview(
         self,
@@ -306,6 +309,79 @@ class SearchService:
         texts = [dict(row)["text"] for row in rows]
         merged = _merge_long_preview_texts(texts, max_items=12)
         return _extract_sentence_like_preview_from_context(merged, max_chars=360)
+
+    def _clean_display_text(self, text: str) -> str:
+        text = " ".join(text.split())
+        text = re.sub(r"\s+\|+\s*", " ", text)
+        text = _collapse_repeated_phrases(text)
+        return text.strip()
+
+    def _trim_display_text(self, text: str, max_chars: int | None = None) -> str:
+        if max_chars is None:
+            max_chars = self.DETAIL_DISPLAY_MAX_CHARS
+
+        text = self._clean_display_text(text)
+        if len(text) <= max_chars:
+            return text
+
+        cutoff = text.rfind(" ", 0, max_chars)
+        if cutoff == -1:
+            cutoff = max_chars
+
+        trimmed = text[:cutoff].strip()
+
+        sentence_cut = max(
+            trimmed.rfind("."),
+            trimmed.rfind("?"),
+            trimmed.rfind("!"),
+            trimmed.rfind("。"),
+            trimmed.rfind("？"),
+            trimmed.rfind("！"),
+        )
+        if sentence_cut >= 80:
+            return trimmed[: sentence_cut + 1].strip()
+
+        return trimmed + "..."
+
+    def _build_detail_display_text(
+            self,
+            video_id: str,
+            start: float,
+            end: float,
+            before_seconds: float | None = None,
+            after_seconds: float | None = None,
+    ) -> str:
+        if before_seconds is None:
+            before_seconds = self.DETAIL_CONTEXT_BEFORE_SECONDS
+        if after_seconds is None:
+            after_seconds = self.DETAIL_CONTEXT_AFTER_SECONDS
+
+        window_start = max(0.0, start - before_seconds)
+        window_end = end + after_seconds
+
+        sql = """
+        SELECT text
+        FROM subtitle_segments
+        WHERE video_id = ?
+          AND start <= ?
+          AND end >= ?
+        ORDER BY start
+        """
+
+        with get_connection() as conn:
+            rows = conn.execute(
+                sql,
+                (video_id, window_end, window_start),
+            ).fetchall()
+
+        texts = [dict(row)["text"] for row in rows if dict(row).get("text")]
+        if not texts:
+            return ""
+
+        merged = _merge_long_preview_texts(texts, max_items=20)
+        merged = self._clean_display_text(merged)
+        return self._trim_display_text(merged)
+
 
     def search(
             self,
@@ -402,6 +478,14 @@ class SearchService:
         JOIN subtitle_segments s ON s.id = f.rowid
         JOIN videos v ON v.id = s.video_id
         WHERE subtitle_segments_fts MATCH ?
+          AND EXISTS (
+              SELECT 1
+              FROM source_videos sv
+              JOIN sources src ON src.id = sv.source_id
+              WHERE sv.video_id = s.video_id
+                AND sv.is_available = 1
+                AND src.is_active = 1
+          )
         ORDER BY bm25(subtitle_segments_fts), s.start
         LIMIT ?
         """
@@ -410,6 +494,22 @@ class SearchService:
             rows = conn.execute(sql, (search_query, limit)).fetchall()
 
         return [dict(row) for row in rows]
+
+    def _video_has_active_source(self, video_id: str) -> bool:
+        sql = """
+        SELECT 1
+        FROM source_videos sv
+        JOIN sources src ON src.id = sv.source_id
+        WHERE sv.video_id = ?
+          AND sv.is_available = 1
+          AND src.is_active = 1
+        LIMIT 1
+        """
+
+        with get_connection() as conn:
+            row = conn.execute(sql, (video_id,)).fetchone()
+
+        return row is not None
 
     def _group_rows(
         self,
@@ -603,14 +703,16 @@ class SearchService:
         )
         return f"https://www.youtube.com/embed/{video_id}?{params}"
 
-
     def get_video_detail(
-        self,
-        video_id: str,
-        query: str,
-        sort_mode: str = "timeline",
-        raw_limit: int = 500,
+            self,
+            video_id: str,
+            query: str,
+            sort_mode: str = "timeline",
+            raw_limit: int = 500,
     ) -> dict | None:
+        if not self._video_has_active_source(video_id):
+            return None
+
         raw_query = query
         exact_phrase = extract_exact_phrase(raw_query)
 
@@ -677,6 +779,12 @@ class SearchService:
             cluster["proximity_boost"] = proximity_boost
             cluster["cluster_hit_count"] = len(cluster.get("hits", []))
             cluster["final_score"] = phrase_boost + proximity_boost
+
+            cluster["display_text"] = self._build_detail_display_text(
+                video_id=video_id,
+                start=float(cluster.get("start", 0.0)),
+                end=float(cluster.get("end", 0.0)),
+            ) or cluster.get("long_preview_text") or cluster.get("preview_text", "")
 
         if sort_mode == "best":
             clusters.sort(

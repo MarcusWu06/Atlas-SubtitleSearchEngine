@@ -2,7 +2,6 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Query
 
-
 from app.models.schemas import (
     ContextSegmentResponse,
     ContextWindowRequest,
@@ -10,24 +9,28 @@ from app.models.schemas import (
     JobResponse,
     JobStatusResponse,
     PlaylistSyncRequest,
+    SaveMomentRequest,
+    SavedItemResponse,
     SourceCreateRequest,
     SourceDetailResponse,
     SourceResponse,
+    SourceUpdateRequest,
     SourceSyncResponse,
     SourceVideoResponse,
     SummarizeContextRequest,
     SummarizeContextResponse,
     SyncRunListItemResponse,
     SyncRunResponse,
+    SaveVideoRequest,
 )
-
-from app.services.summary_service import summary_service
+from app.services.archive_service import archive_service
 from app.services.context_service import context_service
-from app.services.sync_service import sync_service
 from app.services.job_store import job_store
 from app.services.search_service import search_service
 from app.services.source_service import source_service
 from app.services.subtitle_service import subtitle_service
+from app.services.summary_service import summary_service
+from app.services.sync_service import sync_service
 from app.services.youtube_service import youtube_service
 
 router = APIRouter()
@@ -87,6 +90,7 @@ async def search(
         exact=exact,
     )
 
+
 @router.post("/sources", response_model=SourceResponse)
 async def create_source(payload: SourceCreateRequest) -> SourceResponse:
     source = source_service.create_source(payload)
@@ -98,10 +102,12 @@ async def list_sources() -> list[SourceResponse]:
     sources = source_service.list_sources()
     return [SourceResponse(**source) for source in sources]
 
+
 @router.get("/sources/{source_id}", response_model=SourceDetailResponse)
 async def get_source(source_id: int) -> SourceDetailResponse:
     source = source_service.get_source_by_id(source_id)
     return SourceDetailResponse(**source)
+
 
 @router.post("/sources/{source_id}/sync", response_model=SourceSyncResponse)
 async def sync_source(source_id: int) -> SourceSyncResponse:
@@ -110,6 +116,13 @@ async def sync_source(source_id: int) -> SourceSyncResponse:
         source_id=result["source_id"],
         sync_run=SyncRunResponse(**result["sync_run"]),
     )
+
+
+@router.patch("/sources/{source_id}", response_model=SourceDetailResponse)
+async def update_source(source_id: int, payload: SourceUpdateRequest) -> SourceDetailResponse:
+    source = source_service.update_source(source_id, payload)
+    return SourceDetailResponse(**source)
+
 
 @router.get("/sources/{source_id}/videos", response_model=list[SourceVideoResponse])
 async def list_source_videos(source_id: int) -> list[SourceVideoResponse]:
@@ -122,10 +135,12 @@ async def list_source_sync_runs(source_id: int) -> list[SyncRunListItemResponse]
     runs = source_service.list_sync_runs(source_id)
     return [SyncRunListItemResponse(**run) for run in runs]
 
+
 @router.delete("/sources/{source_id}")
 async def delete_source(source_id: int) -> dict[str, str]:
     source_service.delete_source(source_id)
     return {"status": "ok"}
+
 
 @router.post("/context-window", response_model=ContextWindowResponse)
 async def get_context_window(payload: ContextWindowRequest) -> ContextWindowResponse:
@@ -144,6 +159,7 @@ async def get_context_window(payload: ContextWindowRequest) -> ContextWindowResp
         full_text=data["full_text"],
     )
 
+
 @router.post("/summarize-context", response_model=SummarizeContextResponse)
 async def summarize_context(payload: SummarizeContextRequest) -> SummarizeContextResponse:
     data = summary_service.summarize_context(
@@ -155,18 +171,23 @@ async def summarize_context(payload: SummarizeContextRequest) -> SummarizeContex
     )
     return SummarizeContextResponse(**data)
 
+
 @router.get("/videos/{video_id}")
 async def get_video_detail(
     video_id: str,
-    q: str = Query(...),
+    q: str = Query(..., min_length=1),
     sort: str = Query("timeline"),
 ):
+    query = q.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
     if sort not in {"timeline", "best"}:
         raise HTTPException(status_code=400, detail="Invalid sort mode")
 
     data = search_service.get_video_detail(
         video_id=video_id,
-        query=q,
+        query=query,
         sort_mode=sort,
     )
 
@@ -174,3 +195,25 @@ async def get_video_detail(
         raise HTTPException(status_code=404, detail="Video detail not found")
 
     return data
+
+
+@router.post("/archive/moments", response_model=SavedItemResponse)
+async def save_moment(payload: SaveMomentRequest) -> SavedItemResponse:
+    item = archive_service.save_moment(payload)
+    return SavedItemResponse(**item)
+
+@router.post("/archive/videos", response_model=SavedItemResponse)
+async def save_video(payload: SaveVideoRequest) -> SavedItemResponse:
+    item = archive_service.save_video(payload)
+    return SavedItemResponse(**item)
+
+@router.get("/archive", response_model=list[SavedItemResponse])
+async def list_archive_items() -> list[SavedItemResponse]:
+    items = archive_service.list_saved_items()
+    return [SavedItemResponse(**item) for item in items]
+
+
+@router.delete("/archive/{item_id}")
+async def delete_archive_item(item_id: int) -> dict[str, str]:
+    archive_service.delete_saved_item(item_id)
+    return {"status": "ok"}

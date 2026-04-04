@@ -280,6 +280,34 @@
   align-items: start;
 }
 
+.library-card-top-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.library-state-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.library-state-pill.enabled {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.library-state-pill.disabled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
 .library-card-title {
   margin: 0;
   font-family: "Cormorant Garamond", serif;
@@ -554,4 +582,14 @@
   .primary-btn {
     width: 100%;
   }
+
+  .library-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .library-card-top-pills {
+    justify-content: flex-start;
+  }
+
 }

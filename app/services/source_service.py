@@ -240,5 +240,44 @@ class SourceService:
             "error_summary": row["error_summary"],
         }
 
+    def update_source(self, source_id: int, payload) -> dict:
+        updates = []
+        values = []
+
+        if payload.title is not None:
+            title = payload.title.strip()
+            updates.append("title = ?")
+            values.append(title if title else None)
+
+        if payload.is_active is not None:
+            updates.append("is_active = ?")
+            values.append(1 if payload.is_active else 0)
+
+        if not updates:
+            return self.get_source_by_id(source_id)
+
+        values.append(source_id)
+
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id FROM sources WHERE id = ?",
+                (source_id,),
+            ).fetchone()
+
+            if not row:
+                raise ValueError("Source not found")
+
+            conn.execute(
+                f"""
+                UPDATE sources
+                SET {", ".join(updates)}
+                WHERE id = ?
+                """,
+                values,
+            )
+            conn.commit()
+
+        return self.get_source_by_id(source_id)
+
 
 source_service = SourceService()

@@ -11,7 +11,24 @@ from app.services.youtube_service import youtube_service
 
 class SyncService:
     async def sync_source(self, source_id: int) -> dict:
+        with get_connection() as conn:
+            source_row = conn.execute(
+                """
+                SELECT id, is_active
+                FROM sources
+                WHERE id = ?
+                """,
+                (source_id,),
+            ).fetchone()
+
+        if not source_row:
+            raise HTTPException(status_code=404, detail="Source not found")
+
+        if not bool(source_row["is_active"]):
+            raise HTTPException(status_code=400, detail="Source is inactive. Enable it before syncing.")
+
         return await self._sync_source_async(source_id)
+
 
     async def _sync_source_async(self, source_id: int) -> dict:
         source = source_service.get_source_by_id(source_id)

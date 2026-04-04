@@ -119,5 +119,26 @@ def init_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_summary_cache_lookup
             ON summary_cache(video_id, start_seconds, window_before, window_after, model_name);
+
+            CREATE TABLE IF NOT EXISTS saved_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_type TEXT NOT NULL,
+                video_id TEXT NOT NULL,
+                title TEXT,
+                channel TEXT,
+                query TEXT,
+                start_seconds INTEGER,
+                end_seconds INTEGER,
+                display_text TEXT,
+                watch_url TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_saved_items_created_at
+            ON saved_items(created_at);
+
+            CREATE INDEX IF NOT EXISTS idx_saved_items_video_id
+            ON saved_items(video_id);
             """
         )

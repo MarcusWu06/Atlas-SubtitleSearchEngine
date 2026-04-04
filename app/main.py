@@ -49,4 +49,8 @@ async def video_detail_page(request: Request, video_id: str):
         {"request": request, "video_id": video_id},
     )
 
+@app.get("/archive", response_class=HTMLResponse)
+async def archive_page(request: Request):
+    return templates.TemplateResponse("archive.html", {"request": request})
+
 app.include_router(router, prefix="/api")

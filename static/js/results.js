@@ -82,6 +82,52 @@ function highlightText(text, q) {
 }
 
 const summaryCache = new Map();
+const savedMoments = new Set();
+const savedVideos = new Set();
+
+function buildMomentKey(videoId, startSeconds, q) {
+  return `${videoId}__${Math.floor(startSeconds || 0)}__${(q || "").trim()}`;
+}
+
+async function loadSavedState() {
+  const response = await fetch("/api/archive");
+  const text = await response.text();
+
+  let data = [];
+  try {
+    data = text ? JSON.parse(text) : [];
+  } catch (_) {
+    return;
+  }
+
+  if (!Array.isArray(data)) return;
+
+  savedMoments.clear();
+  savedVideos.clear();
+
+  for (const item of data) {
+    const itemType = item?.item_type || "moment";
+
+    if (itemType === "video") {
+      if (item.video_id) {
+        savedVideos.add(item.video_id);
+      }
+      continue;
+    }
+
+    savedMoments.add(
+      buildMomentKey(item.video_id, item.start_seconds, item.query || "")
+    );
+  }
+}
+
+function isMomentSaved(videoId, startSeconds, q) {
+  return savedMoments.has(buildMomentKey(videoId, startSeconds, q));
+}
+
+function isVideoSaved(videoId) {
+  return savedVideos.has(videoId);
+}
 
 async function fetchSummary(videoId, startSeconds) {
   const cacheKey = `${videoId}:${startSeconds}:${query}`;
@@ -117,6 +163,56 @@ async function fetchSummary(videoId, startSeconds) {
   }
 
   summaryCache.set(cacheKey, data);
+  return data;
+}
+
+async function saveMoment(payload) {
+  const response = await fetch("/api/archive/moments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    throw new Error("Invalid archive response.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.detail || data?.message || "Failed to save moment.");
+  }
+
+  return data;
+}
+
+async function saveVideo(payload) {
+  const response = await fetch("/api/archive/videos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    throw new Error("Invalid archive response.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.detail || data?.message || "Failed to save video.");
+  }
+
   return data;
 }
 
@@ -316,7 +412,7 @@ function ensurePlayer(cardId, mountId, videoId, startSeconds, stateEl, playerShe
         articleEl,
         startSeconds,
         currentClusterStart: startSeconds,
-        lastSeekStart: null,
+        lastSeekStart: startSeconds,
         hasStarted: false,
         isPlaying: false
       };
@@ -362,7 +458,7 @@ function ensurePlayer(cardId, mountId, videoId, startSeconds, stateEl, playerShe
   });
 }
 
-function createClusterChip(cluster, onActivate) {
+function createClusterChip(group, cluster, onActivate) {
   const chip = document.createElement("div");
   chip.className = "cluster-chip";
 
@@ -392,11 +488,19 @@ function createClusterChip(cluster, onActivate) {
   summarizeBtn.className = "cluster-action-btn";
   summarizeBtn.textContent = "Summarize";
 
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "cluster-action-btn";
+  saveBtn.textContent = isMomentSaved(cluster.video_id, cluster.start_seconds, query) ? "Saved" : "Save";
+  if (isMomentSaved(cluster.video_id, cluster.start_seconds, query)) {
+    saveBtn.disabled = true;
+  }
+
   const summaryBox = document.createElement("div");
   summaryBox.className = "cluster-summary";
 
   main.append(text, subhits, actions, summaryBox);
-  actions.appendChild(summarizeBtn);
+  actions.append(summarizeBtn, saveBtn);
   row.append(time, main);
   chip.appendChild(row);
 
@@ -433,6 +537,37 @@ function createClusterChip(cluster, onActivate) {
     } finally {
       summarizeBtn.disabled = false;
       summarizeBtn.classList.remove("is-loading");
+    }
+  });
+
+  saveBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+
+    if (isMomentSaved(cluster.video_id, cluster.start_seconds, query)) return;
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+
+    try {
+      await saveMoment({
+        video_id: cluster.video_id,
+        title: group.title,
+        channel: group.channel || "",
+        query,
+        start_seconds: Math.floor(cluster.start_seconds || 0),
+        end_seconds: Math.floor(cluster.end || cluster.start_seconds || 0),
+        display_text: cluster.display_text || cluster.long_preview_text || cluster.preview_text || "",
+        watch_url: cluster.watch_url || group.webpage_url || `https://www.youtube.com/watch?v=${cluster.video_id}&t=${Math.floor(cluster.start_seconds || 0)}s`
+      });
+
+      savedMoments.add(buildMomentKey(cluster.video_id, cluster.start_seconds, query));
+      saveBtn.textContent = "Saved";
+      saveBtn.disabled = true;
+    } catch (error) {
+      console.error(error);
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+      showMessage(error.message || "Failed to save moment.");
     }
   });
 
@@ -599,7 +734,7 @@ function createVideoCard(group, index) {
   detailParams.set("page", String(currentPage));
 
   if (exact) {
-  detailParams.set("exact", "1");
+    detailParams.set("exact", "1");
   }
 
   titleLink.href = `/video/${group.video_id}?${detailParams.toString()}`;
@@ -621,16 +756,53 @@ function createVideoCard(group, index) {
   hitsPill.className = "video-pill";
   hitsPill.textContent = `${group.hit_count} hits`;
 
-  stats.append(hitsPill);
+  const saveVideoBtn = document.createElement("button");
+  saveVideoBtn.type = "button";
+  saveVideoBtn.className = "results-save-video-btn";
+  saveVideoBtn.textContent = isVideoSaved(group.video_id) ? "Saved" : "Save video";
+  if (isVideoSaved(group.video_id)) {
+    saveVideoBtn.disabled = true;
+  }
+
+  stats.append(hitsPill, saveVideoBtn);
   metaRow.append(channel, stats);
 
   const clusterList = document.createElement("div");
   clusterList.className = "cluster-list";
 
   group.clusters.slice(0, 3).forEach((cluster, idx) => {
-    const chip = createClusterChip(cluster, playCluster);
+    const chip = createClusterChip(group, cluster, playCluster);
     if (idx === 0) chip.classList.add("active");
     clusterList.appendChild(chip);
+  });
+
+  saveVideoBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+
+    if (isVideoSaved(group.video_id)) return;
+
+    saveVideoBtn.disabled = true;
+    saveVideoBtn.textContent = "Saving...";
+
+    try {
+      await saveVideo({
+        video_id: group.video_id,
+        title: group.title || "",
+        channel: group.channel || "",
+        query,
+        display_text: group.title || "",
+        watch_url: group.webpage_url || `https://www.youtube.com/watch?v=${group.video_id}`
+      });
+
+      savedVideos.add(group.video_id);
+      saveVideoBtn.textContent = "Saved";
+      saveVideoBtn.disabled = true;
+    } catch (error) {
+      console.error(error);
+      saveVideoBtn.disabled = false;
+      saveVideoBtn.textContent = "Save video";
+      showMessage(error.message || "Failed to save video.");
+    }
   });
 
   body.append(title, metaRow, clusterList);
@@ -659,16 +831,18 @@ async function loadResults() {
     if (paginationTop) paginationTop.innerHTML = "";
     if (pagination) pagination.innerHTML = "";
 
+    await loadSavedState();
+
     const searchParams = new URLSearchParams();
-searchParams.set("q", query);
-searchParams.set("page", String(currentPage));
-searchParams.set("per_page", String(perPage));
+    searchParams.set("q", query);
+    searchParams.set("page", String(currentPage));
+    searchParams.set("per_page", String(perPage));
 
-if (exact) {
-  searchParams.set("exact", "1");
-}
+    if (exact) {
+      searchParams.set("exact", "1");
+    }
 
-const response = await fetch(`/api/search?${searchParams.toString()}`);
+    const response = await fetch(`/api/search?${searchParams.toString()}`);
 
     const text = await response.text();
     let data = null;
@@ -688,11 +862,11 @@ const response = await fetch(`/api/search?${searchParams.toString()}`);
       `${data.total_hits} raw hits • ${data.total_videos} videos • Page ${data.page} of ${data.total_pages || 1}`;
 
     const responseMessage = String(data.message || "").trim();
-      if (responseMessage && responseMessage.toLowerCase() !== "ok") {
+    if (responseMessage && responseMessage.toLowerCase() !== "ok") {
       showMessage(responseMessage);
-          } else {
+    } else {
       hideMessage();
-      }
+    }
 
     if (!data.groups.length) {
       const empty = document.createElement("div");

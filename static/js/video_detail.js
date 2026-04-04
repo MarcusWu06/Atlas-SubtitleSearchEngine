@@ -25,6 +25,9 @@ let ytApiPromise = null;
 let miniPlayerEnabled = false;
 let playerPlaceholderEl = null;
 let scrollStopTimer = null;
+let isVideoSaved = false;
+let currentVideoData = null;
+
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -118,7 +121,6 @@ function ensurePlayerPlaceholder() {
     playerCardEl.parentNode.insertBefore(playerPlaceholderEl, playerCardEl.nextSibling);
   }
 
-  const rect = playerCardEl.getBoundingClientRect();
   const computed = window.getComputedStyle(playerCardEl);
   const height = playerCardEl.offsetHeight;
 
@@ -146,10 +148,7 @@ function updateMiniPlayerState() {
   if (!playerCardEl) return;
 
   const rect = playerCardEl.getBoundingClientRect();
-
-  const shouldMini =
-    rect.top < -180 &&
-    window.innerWidth > 640;
+  const shouldMini = rect.top < -180 && window.innerWidth > 640;
 
   setMiniPlayer(shouldMini);
 }
@@ -283,6 +282,84 @@ async function fetchSummary(startSeconds) {
   return data;
 }
 
+async function saveMoment(payload) {
+  const response = await fetch("/api/archive/moments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    throw new Error("Invalid archive response.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.detail || data?.message || "Failed to save moment.");
+  }
+
+  return data;
+}
+
+async function saveVideo(payload) {
+  const response = await fetch("/api/archive/videos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    throw new Error("Invalid archive response.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.detail || data?.message || "Failed to save video.");
+  }
+
+  return data;
+}
+
+function updateSaveVideoButton() {
+  const saveVideoBtn = document.getElementById("save-video-btn");
+  if (!saveVideoBtn) return;
+
+  saveVideoBtn.disabled = isVideoSaved;
+  saveVideoBtn.textContent = isVideoSaved ? "Saved" : "Save video";
+}
+
+async function checkVideoSaved() {
+  const items = await fetch("/api/archive");
+  const text = await items.text();
+
+  let data = [];
+  try {
+    data = text ? JSON.parse(text) : [];
+  } catch (_) {
+    return;
+  }
+
+  if (!Array.isArray(data)) return;
+
+  isVideoSaved = data.some(
+    (item) => (item.item_type || "") === "video" && item.video_id === videoId
+  );
+
+  updateSaveVideoButton();
+}
+
 function createClusterCard(cluster, index) {
   const article = document.createElement("article");
   article.className = "cluster-card";
@@ -316,12 +393,13 @@ function createClusterCard(cluster, index) {
         </button>
 
         <div class="cluster-main">
-          <div class="cluster-preview">${highlightText(cluster.long_preview_text || cluster.preview_text, query)}</div>
+          <div class="cluster-preview">${highlightText(cluster.display_text || cluster.long_preview_text || cluster.preview_text, query)}</div>
           <div class="cluster-subtext">
             ${cluster.hits.length} matched line${cluster.hits.length > 1 ? "s" : ""}
           </div>
           <div class="cluster-actions">
             <button type="button" class="cluster-action-btn summarize-btn">Summarize</button>
+            <button type="button" class="cluster-action-btn save-btn">Save</button>
           </div>
           <div class="cluster-summary"></div>
         </div>
@@ -331,6 +409,7 @@ function createClusterCard(cluster, index) {
 
   const jumpBtn = article.querySelector(".cluster-time-link");
   const summarizeBtn = article.querySelector(".summarize-btn");
+  const saveBtn = article.querySelector(".save-btn");
   const summaryBox = article.querySelector(".cluster-summary");
 
   jumpBtn?.addEventListener("click", () => activateCluster(index, cluster));
@@ -367,6 +446,36 @@ function createClusterCard(cluster, index) {
     }
   });
 
+  saveBtn?.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+
+    try {
+      await saveMoment({
+        video_id: videoId,
+        title: titleEl?.textContent || "",
+        channel: document.querySelector(".video-info-sub")?.textContent || "",
+        query,
+        start_seconds: Math.floor(cluster.start_seconds || 0),
+        end_seconds: Math.floor(cluster.end || cluster.start_seconds || 0),
+        display_text: cluster.display_text || cluster.long_preview_text || cluster.preview_text || "",
+        watch_url: cluster.watch_url || group.webpage_url || `https://www.youtube.com/watch?v=${cluster.video_id}&t=${Math.floor(cluster.start_seconds || 0)}s`
+      });
+
+      saveBtn.textContent = "Saved";
+    } catch (error) {
+      console.error(error);
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+      return;
+    }
+
+    setTimeout(() => {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+    }, 1200);
+  });
+
   return article;
 }
 
@@ -378,14 +487,14 @@ async function loadVideoDetail() {
   }
 
   if (backToResultsEl) {
-  backToResultsEl.href = buildResultsUrl();
-}
+    backToResultsEl.href = buildResultsUrl();
+  }
 
-if (resultsReturnTextEl) {
-  resultsReturnTextEl.textContent = query
-    ? `Return to results for “${query}”`
-    : "Return to search results";
-}
+  if (resultsReturnTextEl) {
+    resultsReturnTextEl.textContent = query
+      ? `Return to results for “${query}”`
+      : "Return to search results";
+  }
 
   sortTimelineBtn?.classList.toggle("active", sortMode === "timeline");
   sortBestBtn?.classList.toggle("active", sortMode === "best");
@@ -399,6 +508,7 @@ if (resultsReturnTextEl) {
 
   const response = await fetch(`/api/videos/${videoId}?${apiParams.toString()}`);
   const data = await response.json();
+  currentVideoData = data;
 
   titleEl.textContent = data.title || "Video detail";
   metaEl.textContent = `${data.hit_count} hits • ${sortMode === "timeline" ? "Timeline order" : "Best match order"} • Query: "${data.query}"`;
@@ -409,23 +519,57 @@ if (resultsReturnTextEl) {
     : "No matching moments";
 
   infoEl.innerHTML = `
-    <h2 class="video-info-title">${escapeHtml(data.title || "")}</h2>
-    <div class="video-info-sub">
-      Channel: ${escapeHtml(data.channel || "Unknown")} ·
-      Uploader: ${escapeHtml(data.uploader || "Unknown")}
-    </div>
+  <h2 class="video-info-title">${escapeHtml(data.title || "")}</h2>
+  <div class="video-info-sub">
+    Channel: ${escapeHtml(data.channel || "Unknown")} ·
+    Uploader: ${escapeHtml(data.uploader || "Unknown")}
+  </div>
 
-    <div class="video-stat-list">
-      <div class="video-stat-pill">Duration: ${formatTime(data.duration || 0)}</div>
-      <div class="video-stat-pill">Subtitle type: ${escapeHtml(data.selected_subtitle_type || "unknown")}</div>
-      <div class="video-stat-pill">Subtitle lang: ${escapeHtml(data.selected_subtitle_lang || "unknown")}</div>
-      <div class="video-stat-pill">Query: ${escapeHtml(data.query || "")}</div>
-    </div>
+  <div class="video-stat-list">
+    <div class="video-stat-pill">Duration: ${formatTime(data.duration || 0)}</div>
+    <div class="video-stat-pill">Subtitle type: ${escapeHtml(data.selected_subtitle_type || "unknown")}</div>
+    <div class="video-stat-pill">Subtitle lang: ${escapeHtml(data.selected_subtitle_lang || "unknown")}</div>
+    <div class="video-stat-pill">Query: ${escapeHtml(data.query || "")}</div>
+  </div>
 
+  <div class="video-info-actions">
     <a class="video-link-btn" href="${data.webpage_url}" target="_blank" rel="noreferrer">
       Open on YouTube
     </a>
-  `;
+    <button id="save-video-btn" type="button" class="video-link-btn secondary">
+      Save video
+    </button>
+  </div>
+`;
+
+const saveVideoBtn = document.getElementById("save-video-btn");
+
+await checkVideoSaved();
+
+saveVideoBtn?.addEventListener("click", async () => {
+  if (isVideoSaved) return;
+
+  saveVideoBtn.disabled = true;
+  saveVideoBtn.textContent = "Saving...";
+
+  try {
+    await saveVideo({
+      video_id: videoId,
+      title: data.title || "",
+      channel: data.channel || "",
+      query,
+      display_text: data.title || "",
+      watch_url: data.webpage_url || `https://www.youtube.com/watch?v=${videoId}`
+    });
+
+    isVideoSaved = true;
+    updateSaveVideoButton();
+  } catch (error) {
+    console.error(error);
+    isVideoSaved = false;
+    updateSaveVideoButton();
+  }
+});
 
   clustersEl.innerHTML = "";
 

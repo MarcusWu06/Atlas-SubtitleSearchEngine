@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — Archive</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/archive.css" />
+</head>
+<body>
+  <div class="archive-page">
+    <div class="archive-bg" aria-hidden="true">
+      <div class="archive-bg-image"></div>
+      <div class="archive-bg-shade"></div>
+      <div class="archive-bg-grain"></div>
+    </div>
+
+    <header class="atlas-nav">
+      <div class="atlas-nav-inner">
+        <a href="/" class="atlas-nav-brand">
+          <span class="atlas-nav-logo">ATLAS</span>
+          <span class="atlas-nav-sub">Subtitle Search Engine</span>
+        </a>
+
+        <nav class="atlas-nav-menu" aria-label="Primary">
+          <a href="/" class="atlas-nav-link">Home</a>
+          <a href="/library" class="atlas-nav-link">Library</a>
+          <a href="/archive" class="atlas-nav-link atlas-nav-link-active">Archive</a>
+          <a href="/about" class="atlas-nav-link">About</a>
+        </nav>
+
+        <div class="atlas-nav-tools">
+          <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
+            <span class="atlas-nav-orb-core"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="archive-shell">
+      <section class="archive-hero">
+        <p class="archive-kicker">ARCHIVE</p>
+        <h1 class="archive-title">A quiet archive of saved moments.</h1>
+      </section>
+
+      <section class="archive-toolbar">
+        <div class="archive-tabs">
+          <button id="archive-tab-moments" class="archive-tab active" type="button">Moments</button>
+          <button id="archive-tab-videos" class="archive-tab" type="button">Videos</button>
+        </div>
+
+        <div class="archive-meta">
+          <span id="archive-count" class="archive-count">Loading...</span>
+          <button class="archive-sort" type="button">Most recent</button>
+        </div>
+      </section>
+
+      <section id="archive-grid" class="archive-grid"></section>
+    </main>
+  </div>
+
+  <script src="/static/js/archive.js"></script>
+</body>
+</html>

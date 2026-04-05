@@ -37,7 +37,9 @@ function statusClass(status) {
   return allowed.includes(status) ? status : "pending";
 }
 
-function renderEmpty(message = "No sources yet. Add a YouTube playlist URL to start building your Atlas library.") {
+function renderEmpty(
+  message = "No sources yet. Add a YouTube playlist or video URL to start building your Atlas library."
+) {
   libraryList.innerHTML = `
     <div class="empty-library">
       ${escapeHtml(message)}
@@ -50,12 +52,39 @@ function createStatusBadge(status) {
   return `<span class="library-status ${statusClass(safe)}">${escapeHtml(safe)}</span>`;
 }
 
+function formatSourceTypeLabel(sourceType) {
+  if (sourceType === "video") return "video";
+  if (sourceType === "playlist") return "playlist";
+  if (sourceType === "channel") return "channel";
+  return sourceType || "source";
+}
+
+function updateSourceInputHint() {
+  if (!sourceTypeInput || !sourceUrlInput) return;
+
+  const sourceType = sourceTypeInput.value;
+
+  if (sourceType === "video") {
+    sourceUrlInput.placeholder = "Paste a YouTube video URL";
+    return;
+  }
+
+  if (sourceType === "channel") {
+    sourceUrlInput.placeholder = "Paste a YouTube channel URL";
+    return;
+  }
+
+  sourceUrlInput.placeholder = "Paste a YouTube playlist URL";
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const data = await response.json();
+
   if (!response.ok) {
     throw new Error(data.detail || "Request failed");
   }
+
   return data;
 }
 
@@ -212,28 +241,28 @@ function createSourceCard(source) {
   actions.append(renameBtn, toggleBtn, syncBtn, runsBtn, videosBtn, deleteBtn);
 
   card.innerHTML = `
-  <div class="library-card-top">
-    <div>
-      <h3 class="library-card-title">${escapeHtml(title)}</h3>
-      <div class="library-card-subtitle">${escapeHtml(source.source_url)}</div>
-    </div>
-
-    <div class="library-card-top-pills">
-      <div class="library-state-pill ${source.is_active ? "enabled" : "disabled"}">
-        ${source.is_active ? "Enable" : "Disable"}
+    <div class="library-card-top">
+      <div>
+        <h3 class="library-card-title">${escapeHtml(title)}</h3>
+        <div class="library-card-subtitle">${escapeHtml(source.source_url)}</div>
       </div>
-      <div class="library-pill">${escapeHtml(source.source_type)}</div>
-    </div>
-  </div>
 
-  <div class="library-card-meta">
-    <div class="library-pill">Videos: ${source.video_count ?? 0}</div>
-    <div class="library-pill">Available: ${source.available_video_count ?? 0}</div>
-    <div class="library-pill">Runs: ${source.sync_run_count ?? 0}</div>
-    <div class="library-pill">Created: ${escapeHtml(formatDate(source.created_at))}</div>
-    <div class="library-pill">Last sync: ${escapeHtml(formatDate(source.last_synced_at))}</div>
-  </div>
-`;
+      <div class="library-card-top-pills">
+        <div class="library-state-pill ${source.is_active ? "enabled" : "disabled"}">
+          ${source.is_active ? "Enable" : "Disable"}
+        </div>
+        <div class="library-pill">${escapeHtml(formatSourceTypeLabel(source.source_type))}</div>
+      </div>
+    </div>
+
+    <div class="library-card-meta">
+      <div class="library-pill">Videos: ${source.video_count ?? 0}</div>
+      <div class="library-pill">Available: ${source.available_video_count ?? 0}</div>
+      <div class="library-pill">Runs: ${source.sync_run_count ?? 0}</div>
+      <div class="library-pill">Created: ${escapeHtml(formatDate(source.created_at))}</div>
+      <div class="library-pill">Last sync: ${escapeHtml(formatDate(source.last_synced_at))}</div>
+    </div>
+  `;
 
   card.append(actions, body);
 
@@ -341,9 +370,9 @@ function createSourceCard(source) {
   });
 
   deleteBtn.addEventListener("click", async () => {
-    const confirmed = window.confirm("Delete this source from Library?\n" +
-        "\n" +
-        "This will also remove related saved moments and videos from Archive.");
+    const confirmed = window.confirm(
+      "Delete this source from Library?\n\nThis will also remove related saved moments and videos from Archive."
+    );
     if (!confirmed) return;
 
     deleteBtn.disabled = true;
@@ -418,6 +447,7 @@ form?.addEventListener("submit", async (event) => {
     showMessage(`Source added: ${data.title || data.source_key}`);
     sourceUrlInput.value = "";
     sourceTitleInput.value = "";
+    updateSourceInputHint();
     await loadSources();
   } catch (error) {
     showMessage(error.message || "Failed to add source.", "error");
@@ -425,4 +455,7 @@ form?.addEventListener("submit", async (event) => {
   }
 });
 
+sourceTypeInput?.addEventListener("change", updateSourceInputHint);
+
+updateSourceInputHint();
 loadSources();

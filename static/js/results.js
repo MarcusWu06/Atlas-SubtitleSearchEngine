@@ -4,6 +4,9 @@ const exact = params.get("exact") === "1";
 const currentPage = Number(params.get("page") || "1");
 const perPage = 12;
 
+let sourceMode = params.get("source_mode") || "all";
+let selectedSourceIds = parseSourceIds(params.get("source_ids"));
+
 const form = document.getElementById("results-search-form");
 const input = document.getElementById("results-search-input");
 const exactToggle = document.getElementById("exact-search-toggle");
@@ -17,21 +20,57 @@ const messageBox = document.getElementById("message-box");
 if (input) input.value = query;
 if (exactToggle) exactToggle.checked = exact;
 
-form?.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const next = input?.value.trim();
-  if (!next) return;
+const summaryCache = new Map();
+const savedMoments = new Set();
+const savedVideos = new Set();
 
+let allSources = [];
+let sourceFilterReady = false;
+let sourceModeSelect = null;
+let sourcePickerBtn = null;
+let sourcePickerPanel = null;
+
+function parseSourceIds(raw) {
+  if (!raw) return [];
+  const result = [];
+
+  String(raw)
+    .split(",")
+    .map((item) => item.trim())
+    .forEach((item) => {
+      if (!/^\d+$/.test(item)) return;
+      const value = Number(item);
+      if (!result.includes(value)) result.push(value);
+    });
+
+  return result;
+}
+
+function buildSourceIdsParam(ids) {
+  return ids
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .join(",");
+}
+
+function buildResultsParams({ nextQuery, nextPage, nextExact, nextSourceMode, nextSourceIds }) {
   const nextParams = new URLSearchParams();
-  nextParams.set("q", next);
-  nextParams.set("page", "1");
+  nextParams.set("q", nextQuery);
+  nextParams.set("page", String(nextPage));
 
-  if (exactToggle?.checked) {
+  if (nextExact) {
     nextParams.set("exact", "1");
   }
 
-  window.location.href = `/results?${nextParams.toString()}`;
-});
+  if (nextSourceMode === "selected") {
+    nextParams.set("source_mode", "selected");
+    const joined = buildSourceIdsParam(nextSourceIds || []);
+    if (joined) {
+      nextParams.set("source_ids", joined);
+    }
+  }
+
+  return nextParams;
+}
 
 function showMessage(message) {
   if (!messageBox) return;
@@ -80,10 +119,6 @@ function highlightText(text, q) {
   const regex = new RegExp(`(${escapedTokens.join("|")})`, "gi");
   return safeText.replace(regex, '<mark class="hit-highlight">$1</mark>');
 }
-
-const summaryCache = new Map();
-const savedMoments = new Set();
-const savedVideos = new Set();
 
 function buildMomentKey(videoId, startSeconds, q) {
   return `${videoId}__${Math.floor(startSeconds || 0)}__${(q || "").trim()}`;
@@ -228,15 +263,22 @@ function formatTime(seconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+function currentFilterState() {
+  return {
+    sourceMode,
+    selectedSourceIds: [...selectedSourceIds]
+  };
+}
+
 function goToPage(page) {
   const next = Math.max(1, page);
-  const nextParams = new URLSearchParams();
-  nextParams.set("q", query);
-  nextParams.set("page", String(next));
-
-  if (exact) {
-    nextParams.set("exact", "1");
-  }
+  const nextParams = buildResultsParams({
+    nextQuery: query,
+    nextPage: next,
+    nextExact: exact,
+    nextSourceMode: sourceMode,
+    nextSourceIds: selectedSourceIds
+  });
 
   window.location.href = `/results?${nextParams.toString()}`;
 }
@@ -319,6 +361,224 @@ function renderPagination(targetEl, page, totalPages) {
 function buildThumbnail(videoId) {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
+
+function getSelectedSourceLabel() {
+  if (sourceMode !== "selected") return "Choose sources";
+  if (!selectedSourceIds.length) return "Choose sources";
+
+  const selected = allSources.filter((source) => selectedSourceIds.includes(Number(source.id)));
+  if (selected.length === 0) return "Choose sources";
+  if (selected.length === 1) return selected[0].title || selected[0].source_key || "1 source";
+  return `${selected.length} sources selected`;
+}
+
+function closeSourcePanel() {
+  if (!sourcePickerPanel) return;
+  sourcePickerPanel.style.display = "none";
+  sourcePickerBtn?.classList.remove("active");
+}
+
+function openSourcePanel() {
+  if (!sourcePickerPanel) return;
+  sourcePickerPanel.style.display = "block";
+  sourcePickerBtn?.classList.add("active");
+}
+
+function toggleSourcePanel() {
+  if (!sourcePickerPanel) return;
+  const isOpen = sourcePickerPanel.style.display === "block";
+  if (isOpen) {
+    closeSourcePanel();
+  } else {
+    openSourcePanel();
+  }
+}
+
+function syncSourceFilterUi() {
+  if (sourceModeSelect) {
+    sourceModeSelect.value = sourceMode;
+  }
+
+  if (sourcePickerBtn) {
+    sourcePickerBtn.textContent = getSelectedSourceLabel();
+    sourcePickerBtn.style.display = sourceMode === "selected" ? "inline-flex" : "none";
+  }
+
+  if (sourcePickerPanel) {
+    sourcePickerPanel.style.display = "none";
+  }
+}
+
+function renderSourcePickerOptions() {
+  if (!sourcePickerPanel) return;
+
+  if (!allSources.length) {
+    sourcePickerPanel.innerHTML = `
+      <div class="results-source-panel-empty">No library sources found.</div>
+    `;
+    return;
+  }
+
+  sourcePickerPanel.innerHTML = `
+    <div class="results-source-panel-list">
+      ${allSources.map((source) => {
+        const sourceId = Number(source.id);
+        const checked = selectedSourceIds.includes(sourceId) ? "checked" : "";
+        const sourceTitle = source.title || source.source_key || `Source ${source.id}`;
+        return `
+          <label class="results-source-option">
+            <input type="checkbox" value="${sourceId}" ${checked} />
+            <span class="results-source-option-main">
+              <span class="results-source-option-title">${escapeHtml(sourceTitle)}</span>
+              <span class="results-source-option-meta">${escapeHtml(source.source_type || "source")}</span>
+            </span>
+          </label>
+        `;
+      }).join("")}
+    </div>
+    <div class="results-source-panel-actions">
+      <button type="button" class="results-source-panel-btn" data-action="clear">Clear</button>
+      <button type="button" class="results-source-panel-btn primary" data-action="done">Done</button>
+    </div>
+  `;
+
+  sourcePickerPanel.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const checkedIds = [];
+      sourcePickerPanel.querySelectorAll('input[type="checkbox"]:checked').forEach((item) => {
+        checkedIds.push(Number(item.value));
+      });
+      selectedSourceIds = checkedIds;
+      if (sourcePickerBtn) {
+        sourcePickerBtn.textContent = getSelectedSourceLabel();
+      }
+    });
+  });
+
+  const clearBtn = sourcePickerPanel.querySelector('[data-action="clear"]');
+  const doneBtn = sourcePickerPanel.querySelector('[data-action="done"]');
+
+  clearBtn?.addEventListener("click", () => {
+    selectedSourceIds = [];
+    renderSourcePickerOptions();
+    if (sourcePickerBtn) {
+      sourcePickerBtn.textContent = getSelectedSourceLabel();
+    }
+  });
+
+  doneBtn?.addEventListener("click", () => {
+    closeSourcePanel();
+  });
+}
+
+function ensureSourceFilterUi() {
+  if (sourceFilterReady) return;
+
+  const toolbarActions = document.querySelector(".results-toolbar-actions");
+  if (!toolbarActions) return;
+
+  const scopeSelect = document.createElement("select");
+  scopeSelect.className = "results-scope-select";
+  scopeSelect.innerHTML = `
+    <option value="all">All sources</option>
+    <option value="selected">Selected sources</option>
+  `;
+
+  const pickerWrap = document.createElement("div");
+  pickerWrap.className = "results-source-picker-wrap";
+
+  const pickerBtn = document.createElement("button");
+  pickerBtn.type = "button";
+  pickerBtn.className = "results-source-picker-btn";
+  pickerBtn.textContent = "Choose sources";
+
+  const pickerPanel = document.createElement("div");
+  pickerPanel.className = "results-source-picker-panel";
+  pickerPanel.style.display = "none";
+
+  pickerWrap.append(pickerBtn, pickerPanel);
+
+  const searchBtn = toolbarActions.querySelector('button[type="submit"]');
+  const exactLabel = toolbarActions.querySelector(".exact-toggle-toolbar");
+
+  toolbarActions.insertBefore(scopeSelect, exactLabel || searchBtn || null);
+  toolbarActions.insertBefore(pickerWrap, exactLabel || searchBtn || null);
+
+  sourceModeSelect = scopeSelect;
+  sourcePickerBtn = pickerBtn;
+  sourcePickerPanel = pickerPanel;
+
+  sourceModeSelect.addEventListener("change", () => {
+    sourceMode = sourceModeSelect.value === "selected" ? "selected" : "all";
+    if (sourceMode !== "selected") {
+      closeSourcePanel();
+    }
+    syncSourceFilterUi();
+  });
+
+  sourcePickerBtn.addEventListener("click", () => {
+    if (sourceMode !== "selected") return;
+    toggleSourcePanel();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!sourcePickerPanel || !sourcePickerBtn) return;
+    if (!sourcePickerPanel.contains(event.target) && !sourcePickerBtn.contains(event.target)) {
+      closeSourcePanel();
+    }
+  });
+
+  sourceFilterReady = true;
+}
+
+async function loadSourcesForFilter() {
+  try {
+    const response = await fetch("/api/sources");
+    const text = await response.text();
+
+    let data = [];
+    try {
+      data = text ? JSON.parse(text) : [];
+    } catch (_) {
+      data = [];
+    }
+
+    if (!Array.isArray(data)) {
+      allSources = [];
+    } else {
+      allSources = data
+        .filter((source) => source && source.id != null)
+        .sort((a, b) => {
+          const left = String(a.title || a.source_key || "").toLowerCase();
+          const right = String(b.title || b.source_key || "").toLowerCase();
+          return left.localeCompare(right);
+        });
+    }
+  } catch (error) {
+    console.error("Failed to load sources for filter:", error);
+    allSources = [];
+  }
+
+  ensureSourceFilterUi();
+  renderSourcePickerOptions();
+  syncSourceFilterUi();
+}
+
+form?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const next = input?.value.trim();
+  if (!next) return;
+
+  const nextParams = buildResultsParams({
+    nextQuery: next,
+    nextPage: 1,
+    nextExact: Boolean(exactToggle?.checked),
+    nextSourceMode: sourceMode,
+    nextSourceIds: selectedSourceIds
+  });
+
+  window.location.href = `/results?${nextParams.toString()}`;
+});
 
 const ytPlayers = new Map();
 let ytReady = false;
@@ -737,6 +997,14 @@ function createVideoCard(group, index) {
     detailParams.set("exact", "1");
   }
 
+  if (sourceMode === "selected") {
+    detailParams.set("source_mode", "selected");
+    const joined = buildSourceIdsParam(selectedSourceIds);
+    if (joined) {
+      detailParams.set("source_ids", joined);
+    }
+  }
+
   titleLink.href = `/video/${group.video_id}?${detailParams.toString()}`;
   titleLink.target = "_self";
   titleLink.innerHTML = highlightText(group.title, query);
@@ -831,7 +1099,10 @@ async function loadResults() {
     if (paginationTop) paginationTop.innerHTML = "";
     if (pagination) pagination.innerHTML = "";
 
-    await loadSavedState();
+    await Promise.all([
+      loadSavedState(),
+      loadSourcesForFilter()
+    ]);
 
     const searchParams = new URLSearchParams();
     searchParams.set("q", query);
@@ -840,6 +1111,14 @@ async function loadResults() {
 
     if (exact) {
       searchParams.set("exact", "1");
+    }
+
+    if (sourceMode === "selected") {
+      searchParams.set("source_mode", "selected");
+      const joined = buildSourceIdsParam(selectedSourceIds);
+      if (joined) {
+        searchParams.set("source_ids", joined);
+      }
     }
 
     const response = await fetch(`/api/search?${searchParams.toString()}`);
@@ -858,8 +1137,14 @@ async function loadResults() {
       throw new Error(data?.detail || data?.message || "Search request failed.");
     }
 
-    resultsMeta.textContent =
+    let metaText =
       `${data.total_hits} raw hits • ${data.total_videos} videos • Page ${data.page} of ${data.total_pages || 1}`;
+
+    if (sourceMode === "selected") {
+      metaText += ` • ${selectedSourceIds.length || 0} selected source${selectedSourceIds.length === 1 ? "" : "s"}`;
+    }
+
+    resultsMeta.textContent = metaText;
 
     const responseMessage = String(data.message || "").trim();
     if (responseMessage && responseMessage.toLowerCase() !== "ok") {
@@ -873,7 +1158,7 @@ async function loadResults() {
       empty.className = "empty-card";
       empty.innerHTML = `
         <h2 style="margin:0 0 10px; font-size:24px;">No matching subtitle moments found</h2>
-        <div style="color: var(--muted);">Try a longer phrase or a more specific query.</div>
+        <div style="color: var(--muted);">Try a longer phrase, a different source selection, or a more specific query.</div>
       `;
       resultsGrid.appendChild(empty);
       return;

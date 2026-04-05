@@ -173,6 +173,7 @@ def _merge_preview_texts(texts: list[str], max_items: int = 3) -> str:
     final_text = " | ".join(cleaned)
     return _collapse_repeated_phrases(final_text)
 
+
 def _normalize_long_preview_text(text: str) -> str:
     text = " ".join(text.split())
     text = re.sub(r"\s+\|+\s*", " ", text)
@@ -250,6 +251,7 @@ def _build_long_preview_text(hits: list[dict]) -> str:
         max_items=8,
     )
     return _extract_sentence_like_preview(merged, max_chars=320)
+
 
 def _extract_sentence_like_preview_from_context(text: str, max_chars: int = 360) -> str:
     text = _normalize_long_preview_text(text)
@@ -344,12 +346,12 @@ class SearchService:
         return trimmed + "..."
 
     def _build_detail_display_text(
-            self,
-            video_id: str,
-            start: float,
-            end: float,
-            before_seconds: float | None = None,
-            after_seconds: float | None = None,
+        self,
+        video_id: str,
+        start: float,
+        end: float,
+        before_seconds: float | None = None,
+        after_seconds: float | None = None,
     ) -> str:
         if before_seconds is None:
             before_seconds = self.DETAIL_CONTEXT_BEFORE_SECONDS
@@ -382,16 +384,32 @@ class SearchService:
         merged = self._clean_display_text(merged)
         return self._trim_display_text(merged)
 
+    def _parse_source_ids(self, source_ids: str | None) -> list[int]:
+        if not source_ids:
+            return []
+
+        result: list[int] = []
+        for part in source_ids.split(","):
+            item = part.strip()
+            if not item or not item.isdigit():
+                continue
+
+            value = int(item)
+            if value not in result:
+                result.append(value)
+
+        return result
 
     def search(
-            self,
-            query: str,
-            page: int = 1,
-            per_page: int = 12,
-            raw_limit: int = 300,
-            exact: bool = False,
+        self,
+        query: str,
+        page: int = 1,
+        per_page: int = 12,
+        raw_limit: int = 300,
+        exact: bool = False,
+        source_mode: str = "all",
+        source_ids: str | None = None,
     ) -> dict:
-
         raw_query = query
         manual_exact_phrase = extract_exact_phrase(raw_query)
 
@@ -404,10 +422,44 @@ class SearchService:
         query = normalize_query(effective_exact_phrase if effective_exact_phrase else raw_query)
         normalized_phrase = build_normalized_phrase(query)
         query_tokens = build_query_tokens(query)
+        selected_source_ids = self._parse_source_ids(source_ids)
+
+        if source_mode not in {"all", "selected"}:
+            return {
+                "query": raw_query,
+                "exact": bool(effective_exact_phrase),
+                "source_mode": source_mode,
+                "source_ids": selected_source_ids,
+                "total_hits": 0,
+                "total_videos": 0,
+                "total_pages": 0,
+                "page": 1,
+                "per_page": per_page,
+                "groups": [],
+                "message": "Invalid source mode.",
+            }
+
+        if source_mode == "selected" and not selected_source_ids:
+            return {
+                "query": raw_query,
+                "exact": bool(effective_exact_phrase),
+                "source_mode": source_mode,
+                "source_ids": selected_source_ids,
+                "total_hits": 0,
+                "total_videos": 0,
+                "total_pages": 0,
+                "page": 1,
+                "per_page": per_page,
+                "groups": [],
+                "message": "No sources selected.",
+            }
 
         if not query:
             return {
                 "query": raw_query,
+                "exact": bool(effective_exact_phrase),
+                "source_mode": source_mode,
+                "source_ids": selected_source_ids,
                 "total_hits": 0,
                 "total_videos": 0,
                 "total_pages": 0,
@@ -420,6 +472,9 @@ class SearchService:
         if not effective_exact_phrase and is_high_frequency_query(query):
             return {
                 "query": raw_query,
+                "exact": bool(effective_exact_phrase),
+                "source_mode": source_mode,
+                "source_ids": selected_source_ids,
                 "total_hits": 0,
                 "total_videos": 0,
                 "total_pages": 0,
@@ -429,7 +484,13 @@ class SearchService:
                 "message": "Query too broad. Please use a more specific phrase.",
             }
 
-        rows = self._search_segments(query, raw_limit, exact_phrase=effective_exact_phrase)
+        rows = self._search_segments(
+            query=query,
+            limit=raw_limit,
+            exact_phrase=effective_exact_phrase,
+            source_mode=source_mode,
+            selected_source_ids=selected_source_ids,
+        )
         groups = self._group_rows(
             rows,
             normalized_phrase=normalized_phrase,
@@ -451,6 +512,8 @@ class SearchService:
         return {
             "query": raw_query,
             "exact": bool(effective_exact_phrase),
+            "source_mode": source_mode,
+            "source_ids": selected_source_ids,
             "total_hits": len(rows),
             "total_videos": total_videos,
             "total_pages": total_pages,
@@ -460,10 +523,35 @@ class SearchService:
             "message": "ok",
         }
 
-    def _search_segments(self, query: str, limit: int, exact_phrase: str | None = None) -> list[dict]:
+    def _search_segments(
+        self,
+        query: str,
+        limit: int,
+        exact_phrase: str | None = None,
+        source_mode: str = "all",
+        selected_source_ids: list[int] | None = None,
+    ) -> list[dict]:
         search_query = f'"{exact_phrase}"' if exact_phrase else query
 
-        sql = """
+        exists_sql = """
+        EXISTS (
+            SELECT 1
+            FROM source_videos sv
+            JOIN sources src ON src.id = sv.source_id
+            WHERE sv.video_id = s.video_id
+              AND sv.is_available = 1
+              AND src.is_active = 1
+        """
+        params: list = [search_query]
+
+        if source_mode == "selected" and selected_source_ids:
+            placeholders = ",".join("?" for _ in selected_source_ids)
+            exists_sql += f" AND sv.source_id IN ({placeholders})"
+            params.extend(selected_source_ids)
+
+        exists_sql += ")"
+
+        sql = f"""
         SELECT
             s.id AS segment_id,
             s.video_id,
@@ -478,20 +566,15 @@ class SearchService:
         JOIN subtitle_segments s ON s.id = f.rowid
         JOIN videos v ON v.id = s.video_id
         WHERE subtitle_segments_fts MATCH ?
-          AND EXISTS (
-              SELECT 1
-              FROM source_videos sv
-              JOIN sources src ON src.id = sv.source_id
-              WHERE sv.video_id = s.video_id
-                AND sv.is_available = 1
-                AND src.is_active = 1
-          )
+          AND {exists_sql}
         ORDER BY bm25(subtitle_segments_fts), s.start
         LIMIT ?
         """
 
+        params.append(limit)
+
         with get_connection() as conn:
-            rows = conn.execute(sql, (search_query, limit)).fetchall()
+            rows = conn.execute(sql, params).fetchall()
 
         return [dict(row) for row in rows]
 
@@ -704,11 +787,11 @@ class SearchService:
         return f"https://www.youtube.com/embed/{video_id}?{params}"
 
     def get_video_detail(
-            self,
-            video_id: str,
-            query: str,
-            sort_mode: str = "timeline",
-            raw_limit: int = 500,
+        self,
+        video_id: str,
+        query: str,
+        sort_mode: str = "timeline",
+        raw_limit: int = 500,
     ) -> dict | None:
         if not self._video_has_active_source(video_id):
             return None

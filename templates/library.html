@@ -24,26 +24,26 @@
     </div>
 
     <header class="atlas-nav">
-  <div class="atlas-nav-inner">
-    <a href="/" class="atlas-nav-brand">
-      <span class="atlas-nav-logo">ATLAS</span>
-      <span class="atlas-nav-sub">Subtitle Search Engine</span>
-    </a>
+      <div class="atlas-nav-inner">
+        <a href="/" class="atlas-nav-brand">
+          <span class="atlas-nav-logo">ATLAS</span>
+          <span class="atlas-nav-sub">Subtitle Search Engine</span>
+        </a>
 
-    <nav class="atlas-nav-menu" aria-label="Primary">
-      <a href="/" class="atlas-nav-link">Home</a>
-      <a href="/library" class="atlas-nav-link atlas-nav-link-active">Library</a>
-      <a href="/archive" class="atlas-nav-link">Archive</a>
-      <a href="/about" class="atlas-nav-link">About</a>
-    </nav>
+        <nav class="atlas-nav-menu" aria-label="Primary">
+          <a href="/" class="atlas-nav-link">Home</a>
+          <a href="/library" class="atlas-nav-link atlas-nav-link-active">Library</a>
+          <a href="/archive" class="atlas-nav-link">Archive</a>
+          <a href="/about" class="atlas-nav-link">About</a>
+        </nav>
 
-    <div class="atlas-nav-tools">
-      <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
-        <span class="atlas-nav-orb-core"></span>
-      </button>
-    </div>
-  </div>
-</header>
+        <div class="atlas-nav-tools">
+          <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
+            <span class="atlas-nav-orb-core"></span>
+          </button>
+        </div>
+      </div>
+    </header>
 
     <main class="library-shell">
       <section class="library-hero">
@@ -51,7 +51,7 @@
           <p class="hero-kicker">Library</p>
           <h1 class="hero-title">Add YouTube sources into Atlas.</h1>
           <p class="hero-subtitle">
-            Import playlist URLs into your Atlas library so their subtitles can be indexed and searched globally.
+            Import playlist or video URLs into your Atlas library so their subtitles can be indexed and searched globally.
           </p>
         </div>
       </section>
@@ -63,6 +63,7 @@
               <label class="field-label" for="source-type">Source type</label>
               <select id="source-type" class="field-control select-control">
                 <option value="playlist">Playlist</option>
+                <option value="video">Video</option>
               </select>
             </div>
 
@@ -72,7 +73,7 @@
                 id="source-url"
                 class="field-control"
                 type="url"
-                placeholder="Paste a YouTube playlist URL"
+                placeholder="Paste a YouTube playlist or video URL"
                 autocomplete="off"
                 required
               />
@@ -84,7 +85,7 @@
                 id="source-title"
                 class="field-control"
                 type="text"
-                placeholder="e.g. BBC AI playlist"
+                placeholder="e.g. BBC AI playlist or keynote video"
                 autocomplete="off"
               />
             </div>

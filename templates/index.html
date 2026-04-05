@@ -75,11 +75,27 @@
             <button class="search-button" type="submit">Search</button>
           </div>
 
-          <div class="search-meta">
-            <label class="exact-toggle">
-              <input id="exact-search-toggle" type="checkbox" />
-              <span>Exact phrase</span>
-            </label>
+          <div class="search-controls">
+            <div class="search-controls-left">
+              <label class="exact-toggle">
+                <input id="exact-search-toggle" type="checkbox" />
+                <span>Exact phrase</span>
+              </label>
+
+              <select id="home-source-mode" class="home-scope-select" aria-label="Source scope">
+                <option value="all">All sources</option>
+                <option value="selected">Selected sources</option>
+              </select>
+
+              <button
+                id="home-source-picker-btn"
+                type="button"
+                class="home-source-picker-btn"
+                style="display: none;"
+              >
+                Choose sources
+              </button>
+            </div>
 
             <div class="search-hints">
               <span class="hints-label">Try</span>
@@ -91,6 +107,51 @@
         </form>
       </section>
     </main>
+
+    <div id="home-source-modal" class="home-source-modal hidden" aria-hidden="true">
+      <div id="home-source-modal-backdrop" class="home-source-modal-backdrop"></div>
+
+      <div
+        class="home-source-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="home-source-modal-title"
+      >
+        <div class="home-source-modal-head">
+          <div class="home-source-modal-copy">
+            <div class="home-source-modal-kicker">Source filter</div>
+            <h2 id="home-source-modal-title" class="home-source-modal-title">Choose sources for search</h2>
+            <p class="home-source-modal-text">
+              Select one or more library sources to narrow Atlas search results.
+            </p>
+          </div>
+
+          <button
+            id="home-source-modal-close"
+            type="button"
+            class="home-source-modal-close"
+            aria-label="Close source chooser"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="home-source-modal-body" class="home-source-modal-body"></div>
+
+        <div class="home-source-modal-foot">
+          <div id="home-source-modal-count" class="home-source-modal-count">0 selected</div>
+
+          <div class="home-source-modal-actions">
+            <button id="home-source-clear-btn" type="button" class="home-source-modal-btn">
+              Clear
+            </button>
+            <button id="home-source-done-btn" type="button" class="home-source-modal-btn primary">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/static/js/home.js"></script>

@@ -2,15 +2,14 @@ from urllib.parse import parse_qs, urlparse
 
 from fastapi import HTTPException
 
+from app.core.config import settings
 from app.db.database import get_connection
 from app.models.schemas import SourceCreateRequest
-from pathlib import Path
-from app.core.config import settings
 
 
 class SourceService:
     def create_source(self, payload: SourceCreateRequest) -> dict:
-        source_url = str(payload.source_url)
+        source_url = str(payload.source_url).strip()
         source_key = self._build_source_key(payload.source_type, source_url)
 
         with get_connection() as conn:
@@ -170,7 +169,6 @@ class SourceService:
                     (video_id,),
                 )
 
-        # delete local subtitle folders after DB cleanup
         subtitles_root = settings.SUBTITLES_DIR
         for video_id in orphan_video_ids:
             video_dir = subtitles_root / video_id
@@ -183,21 +181,93 @@ class SourceService:
                 video_dir.rmdir()
 
     def _build_source_key(self, source_type: str, source_url: str) -> str:
-        parsed = urlparse(source_url)
-
         if source_type == "playlist":
-            playlist_id = parse_qs(parsed.query).get("list", [None])[0]
-            if not playlist_id:
-                raise HTTPException(status_code=400, detail="Invalid playlist URL")
+            playlist_id = self._extract_playlist_id(source_url)
             return f"playlist:{playlist_id}"
 
         if source_type == "channel":
-            path = parsed.path.rstrip("/")
-            if not path:
-                raise HTTPException(status_code=400, detail="Invalid channel URL")
-            return f"channel:{path}"
+            channel_key = self._extract_channel_key(source_url)
+            return f"channel:{channel_key}"
+
+        if source_type == "video":
+            video_id = self._extract_video_id(source_url)
+            return f"video:{video_id}"
 
         raise HTTPException(status_code=400, detail="Unsupported source type")
+
+    def _extract_playlist_id(self, source_url: str) -> str:
+        parsed = urlparse(source_url)
+        playlist_id = parse_qs(parsed.query).get("list", [None])[0]
+        if not playlist_id:
+            raise HTTPException(status_code=400, detail="Invalid playlist URL")
+        return playlist_id
+
+    def _extract_channel_key(self, source_url: str) -> str:
+        parsed = urlparse(source_url)
+        host = (parsed.netloc or "").lower()
+        path = (parsed.path or "").rstrip("/")
+
+        if not self._is_youtube_host(host):
+            raise HTTPException(status_code=400, detail="Invalid channel URL")
+
+        if not path or path == "/watch":
+            raise HTTPException(status_code=400, detail="Invalid channel URL")
+
+        allowed_prefixes = ("/channel/", "/@", "/c/", "/user/")
+        if not path.startswith(allowed_prefixes):
+            raise HTTPException(status_code=400, detail="Invalid channel URL")
+
+        return path
+
+    def _extract_video_id(self, source_url: str) -> str:
+        parsed = urlparse(source_url)
+        host = (parsed.netloc or "").lower()
+        path = (parsed.path or "").strip("/")
+        query = parse_qs(parsed.query)
+
+        if not self._is_youtube_host(host):
+            raise HTTPException(status_code=400, detail="Invalid video URL")
+
+        if host.endswith("youtu.be"):
+            video_id = path.split("/", 1)[0]
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid video URL")
+            return video_id
+
+        if path == "watch":
+            video_id = query.get("v", [None])[0]
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid video URL")
+            return video_id
+
+        if path.startswith("shorts/"):
+            video_id = path.split("/", 1)[1].split("/", 1)[0]
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid video URL")
+            return video_id
+
+        if path.startswith("embed/"):
+            video_id = path.split("/", 1)[1].split("/", 1)[0]
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid video URL")
+            return video_id
+
+        if path.startswith("v/"):
+            video_id = path.split("/", 1)[1].split("/", 1)[0]
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid video URL")
+            return video_id
+
+        raise HTTPException(status_code=400, detail="Invalid video URL")
+
+    def _is_youtube_host(self, host: str) -> bool:
+        return host in {
+            "www.youtube.com",
+            "youtube.com",
+            "m.youtube.com",
+            "music.youtube.com",
+            "youtu.be",
+        }
 
     def _row_to_dict(self, row) -> dict:
         return {

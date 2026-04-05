@@ -24,26 +24,26 @@
     </div>
 
     <header class="atlas-nav">
-  <div class="atlas-nav-inner">
-    <a href="/" class="atlas-nav-brand">
-      <span class="atlas-nav-logo">ATLAS</span>
-      <span class="atlas-nav-sub">Subtitle Search Engine</span>
-    </a>
+      <div class="atlas-nav-inner">
+        <a href="/" class="atlas-nav-brand">
+          <span class="atlas-nav-logo">ATLAS</span>
+          <span class="atlas-nav-sub">Subtitle Search Engine</span>
+        </a>
 
-    <nav class="atlas-nav-menu" aria-label="Primary">
-      <a href="/" class="atlas-nav-link">Home</a>
-      <a href="/library" class="atlas-nav-link">Library</a>
-      <a href="/archive" class="atlas-nav-link">Archive</a>
-      <a href="/about" class="atlas-nav-link">About</a>
-    </nav>
+        <nav class="atlas-nav-menu" aria-label="Primary">
+          <a href="/" class="atlas-nav-link">Home</a>
+          <a href="/library" class="atlas-nav-link">Library</a>
+          <a href="/archive" class="atlas-nav-link">Archive</a>
+          <a href="/about" class="atlas-nav-link">About</a>
+        </nav>
 
-    <div class="atlas-nav-tools">
-      <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
-        <span class="atlas-nav-orb-core"></span>
-      </button>
-    </div>
-  </div>
-</header>
+        <div class="atlas-nav-tools">
+          <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
+            <span class="atlas-nav-orb-core"></span>
+          </button>
+        </div>
+      </div>
+    </header>
 
     <main class="results-shell">
       <section class="results-head">
@@ -52,23 +52,30 @@
           <h1 id="results-title" class="results-title">Loading results...</h1>
           <div id="results-meta" class="results-meta"></div>
         </div>
-
-        <label class="exact-toggle">
-          <input id="exact-search-toggle" type="checkbox" />
-          <span>Exact phrase</span>
-        </label>
       </section>
 
-      <form id="results-search-form" class="results-search-bar">
-        <input
-          id="results-search-input"
-          class="search-input compact"
-          type="text"
-          placeholder="Search subtitles"
-          autocomplete="off"
-        />
-        <button class="search-button compact" type="submit">Search</button>
-      </form>
+      <section class="results-toolbar-wrap">
+        <form id="results-search-form" class="results-toolbar">
+          <div class="results-toolbar-main">
+            <input
+              id="results-search-input"
+              class="search-input compact"
+              type="text"
+              placeholder="Search subtitles"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="results-toolbar-actions">
+            <label class="exact-toggle exact-toggle-toolbar">
+              <input id="exact-search-toggle" type="checkbox" />
+              <span>Exact phrase</span>
+            </label>
+
+            <button class="search-button compact" type="submit">Search</button>
+          </div>
+        </form>
+      </section>
 
       <div id="message-box" class="message-box hidden"></div>
 

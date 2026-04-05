@@ -82,12 +82,16 @@ async def search(
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=50),
     exact: bool = Query(False),
+    source_mode: str = Query("all"),
+    source_ids: str | None = Query(None),
 ):
     return search_service.search(
         query=q,
         page=page,
         per_page=per_page,
         exact=exact,
+        source_mode=source_mode,
+        source_ids=source_ids,
     )
 
 

@@ -155,6 +155,9 @@ class YouTubeService:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(playlist_url, download=False)
 
+        if not info:
+            return []
+
         entries: list[dict[str, str]] = []
         for entry in info.get("entries", []) or []:
             if not entry or not entry.get("id"):
@@ -199,7 +202,13 @@ class YouTubeService:
                 "saved_files": [],
             }
             self._save_json(video_dir / "chosen.json", chosen)
-            return {"video_id": video_id, "status": "no_subtitles"}
+            return {
+                "video_id": video_id,
+                "title": info.get("title"),
+                "webpage_url": info.get("webpage_url", video_url),
+                "channel": info.get("channel"),
+                "status": "no_subtitles",
+            }
 
         self._download_subtitles(
             video_url=video_url,
@@ -222,6 +231,8 @@ class YouTubeService:
         return {
             "video_id": video_id,
             "title": info.get("title"),
+            "webpage_url": info.get("webpage_url", video_url),
+            "channel": info.get("channel"),
             "status": "success",
             "selected_type": selected["type"],
             "selected_lang": selected["lang"],
@@ -268,14 +279,12 @@ class YouTubeService:
     ) -> dict[str, str] | None:
         preferred_langs = [lang for lang in languages if lang != "auto"]
 
-        # 先按语言选，不再强行手动优先
         for lang in preferred_langs:
             if subtitles.get(lang):
                 return {"type": "manual", "lang": lang}
             if include_auto_subtitles and automatic_captions.get(lang):
                 return {"type": "auto", "lang": lang}
 
-        # 没有命中首选语言时，再回退
         if subtitles:
             lang = next(iter(subtitles.keys()))
             return {"type": "manual", "lang": lang}

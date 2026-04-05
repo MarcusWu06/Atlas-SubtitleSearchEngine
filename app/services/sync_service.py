@@ -25,16 +25,30 @@ class SyncService:
             raise HTTPException(status_code=404, detail="Source not found")
 
         if not bool(source_row["is_active"]):
-            raise HTTPException(status_code=400, detail="Source is inactive. Enable it before syncing.")
+            raise HTTPException(
+                status_code=400,
+                detail="Source is inactive. Enable it before syncing.",
+            )
 
         return await self._sync_source_async(source_id)
 
-
     async def _sync_source_async(self, source_id: int) -> dict:
         source = source_service.get_source_by_id(source_id)
+        source_type = source["source_type"]
 
-        if source["source_type"] != "playlist":
-            raise HTTPException(status_code=400, detail="Only playlist sync is supported for now")
+        if source_type == "playlist":
+            return await self._sync_playlist_source(source)
+
+        if source_type == "video":
+            return await self._sync_video_source(source)
+
+        raise HTTPException(
+            status_code=400,
+            detail="Only playlist and video sync are supported for now",
+        )
+
+    async def _sync_playlist_source(self, source: dict) -> dict:
+        source_id = source["id"]
 
         with get_connection() as conn:
             cursor = conn.execute(
@@ -164,6 +178,164 @@ class SyncService:
                         succeeded,
                         failed,
                         "\n".join(errors) if errors else None,
+                        sync_run_id,
+                    ),
+                )
+
+                row = conn.execute(
+                    """
+                    SELECT *
+                    FROM sync_runs
+                    WHERE id = ?
+                    """,
+                    (sync_run_id,),
+                ).fetchone()
+
+            return {
+                "source_id": source_id,
+                "sync_run": self._sync_run_to_dict(row),
+            }
+
+        except Exception as exc:
+            now = datetime.now(UTC).isoformat()
+            with get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE sync_runs
+                    SET
+                        status = 'failed',
+                        finished_at = ?,
+                        error_summary = ?
+                    WHERE id = ?
+                    """,
+                    (now, str(exc), sync_run_id),
+                )
+                row = conn.execute(
+                    "SELECT * FROM sync_runs WHERE id = ?",
+                    (sync_run_id,),
+                ).fetchone()
+
+            return {
+                "source_id": source_id,
+                "sync_run": self._sync_run_to_dict(row),
+            }
+
+    async def _sync_video_source(self, source: dict) -> dict:
+        source_id = source["id"]
+        source_key = source["source_key"]
+
+        if not source_key.startswith("video:"):
+            raise HTTPException(status_code=400, detail="Invalid video source key")
+
+        video_id = source_key.split(":", 1)[1].strip()
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid video source key")
+
+        with get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO sync_runs (source_id, status)
+                VALUES (?, 'running')
+                """,
+                (source_id,),
+            )
+            sync_run_id = cursor.lastrowid
+
+        try:
+            now = datetime.now(UTC).isoformat()
+
+            with get_connection() as conn:
+                existing_row = conn.execute(
+                    """
+                    SELECT id
+                    FROM source_videos
+                    WHERE source_id = ? AND video_id = ?
+                    """,
+                    (source_id, video_id),
+                ).fetchone()
+
+                if existing_row:
+                    conn.execute(
+                        """
+                        UPDATE source_videos
+                        SET
+                            position = 1,
+                            last_seen_at = ?,
+                            is_available = 1,
+                            sync_status = 'pending',
+                            last_error = NULL
+                        WHERE source_id = ? AND video_id = ?
+                        """,
+                        (now, source_id, video_id),
+                    )
+                    new_videos = 0
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO source_videos (
+                            source_id, video_id, position, discovered_at, last_seen_at,
+                            is_available, sync_status, last_error
+                        )
+                        VALUES (?, ?, ?, ?, ?, 1, 'pending', NULL)
+                        """,
+                        (source_id, video_id, 1, now, now),
+                    )
+                    new_videos = 1
+
+                conn.execute(
+                    """
+                    UPDATE source_videos
+                    SET is_available = 0
+                    WHERE source_id = ?
+                      AND video_id != ?
+                    """,
+                    (source_id, video_id),
+                )
+
+            result = await self._process_single_new_video(
+                semaphore=asyncio.Semaphore(1),
+                source_id=source_id,
+                video_id=video_id,
+                now=now,
+            )
+
+            processed = 1
+            succeeded = 1 if result["sync_status"] == "success" else 0
+            failed = 0 if result["sync_status"] == "success" else 1
+            error_summary = result["error_summary"]
+
+            with get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE sources
+                    SET last_synced_at = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (now, now, source_id),
+                )
+
+                conn.execute(
+                    """
+                    UPDATE sync_runs
+                    SET
+                        status = 'completed',
+                        finished_at = ?,
+                        total_discovered = ?,
+                        new_videos = ?,
+                        processed = ?,
+                        succeeded = ?,
+                        failed = ?,
+                        error_summary = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        now,
+                        1,
+                        new_videos,
+                        processed,
+                        succeeded,
+                        failed,
+                        error_summary,
                         sync_run_id,
                     ),
                 )

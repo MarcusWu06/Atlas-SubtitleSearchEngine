@@ -29,14 +29,14 @@ class JobStatusResponse(BaseModel):
 
 
 class SourceCreateRequest(BaseModel):
-    source_type: Literal["playlist", "channel"]
+    source_type: Literal["playlist", "channel", "video"]
     source_url: HttpUrl
     title: str | None = None
 
 
 class SourceResponse(BaseModel):
     id: int
-    source_type: Literal["playlist", "channel"]
+    source_type: Literal["playlist", "channel", "video"]
     source_url: str
     source_key: str
     title: str | None = None
@@ -151,6 +151,7 @@ class SaveMomentRequest(BaseModel):
     display_text: Optional[str] = None
     watch_url: Optional[str] = None
 
+
 class SaveVideoRequest(BaseModel):
     video_id: str
     title: Optional[str] = None
@@ -158,6 +159,7 @@ class SaveVideoRequest(BaseModel):
     query: Optional[str] = None
     display_text: Optional[str] = None
     watch_url: Optional[str] = None
+
 
 class SavedItemResponse(BaseModel):
     id: int

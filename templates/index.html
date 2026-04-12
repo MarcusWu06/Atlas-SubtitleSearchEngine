@@ -38,8 +38,9 @@
       </a>
 
       <nav class="top-nav">
-        <a href="/results?q=Gemini" class="nav-link">Results</a>
         <a href="/library" class="nav-link">Library</a>
+        <a href="/archive" class="nav-link">Archive</a>
+        <a href="/about" class="nav-link">About</a>
       </nav>
     </header>
 
@@ -97,11 +98,9 @@
               </button>
             </div>
 
-            <div class="search-hints">
-              <span class="hints-label">Try</span>
-              <button type="button" class="hint-chip" data-query="artificial intelligence">artificial intelligence</button>
-              <button type="button" class="hint-chip" data-query="Gemini">Gemini</button>
-              <button type="button" class="hint-chip" data-query="deepfake">deepfake</button>
+            <div class="search-history">
+              <span id="history-label" class="history-label" style="display: none;">Recent</span>
+              <div id="history-chips" class="history-chips"></div>
             </div>
           </div>
         </form>

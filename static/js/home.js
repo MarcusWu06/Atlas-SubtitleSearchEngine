@@ -1,7 +1,6 @@
 const form = document.getElementById("search-form");
 const input = document.getElementById("search-input");
 const exactToggle = document.getElementById("exact-search-toggle");
-const chips = document.querySelectorAll(".hint-chip");
 
 const sourceModeSelect = document.getElementById("home-source-mode");
 const sourcePickerBtn = document.getElementById("home-source-picker-btn");
@@ -13,6 +12,12 @@ const sourceModalBody = document.getElementById("home-source-modal-body");
 const sourceModalCount = document.getElementById("home-source-modal-count");
 const sourceClearBtn = document.getElementById("home-source-clear-btn");
 const sourceDoneBtn = document.getElementById("home-source-done-btn");
+
+const historyLabel = document.getElementById("history-label");
+const historyChips = document.getElementById("history-chips");
+
+const SEARCH_HISTORY_KEY = "atlas_recent_searches";
+const SEARCH_HISTORY_LIMIT = 3;
 
 let allSources = [];
 let selectedSourceIds = [];
@@ -37,22 +42,6 @@ function buildResultsUrl(query) {
   }
 
   return `/results?${params.toString()}`;
-}
-
-function parseSourceIds(raw) {
-  if (!raw) return [];
-  const result = [];
-
-  String(raw)
-    .split(",")
-    .map((item) => item.trim())
-    .forEach((item) => {
-      if (!/^\d+$/.test(item)) return;
-      const value = Number(item);
-      if (!result.includes(value)) result.push(value);
-    });
-
-  return result;
 }
 
 function buildSourceIdsParam(ids) {
@@ -85,8 +74,7 @@ function getSelectedSourceLabel() {
 }
 
 function getSelectedCountText() {
-  const count = selectedSourceIds.length;
-  return `${count} selected${count === 1 ? "" : ""}`;
+  return `${selectedSourceIds.length} selected`;
 }
 
 function syncSourceFilterUi() {
@@ -217,23 +205,95 @@ async function loadSourcesForFilter() {
   syncSourceFilterUi();
 }
 
+/* ---------- recent searches ---------- */
+
+function readRecentSearches() {
+  try {
+    const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .slice(0, SEARCH_HISTORY_LIMIT);
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeRecentSearches(items) {
+  try {
+    localStorage.setItem(
+      SEARCH_HISTORY_KEY,
+      JSON.stringify(items.slice(0, SEARCH_HISTORY_LIMIT))
+    );
+  } catch (_) {}
+}
+
+function pushRecentSearch(query) {
+  const q = String(query || "").trim();
+  if (!q) return;
+
+  const existing = readRecentSearches().filter(
+    (item) => item.toLowerCase() !== q.toLowerCase()
+  );
+
+  const next = [q, ...existing].slice(0, SEARCH_HISTORY_LIMIT);
+  writeRecentSearches(next);
+  renderRecentSearches();
+}
+
+function renderRecentSearches() {
+  if (!historyChips || !historyLabel) return;
+
+  const items = readRecentSearches();
+
+  if (!items.length) {
+    historyLabel.style.display = "none";
+    historyChips.innerHTML = "";
+    return;
+  }
+
+  historyLabel.style.display = "inline-flex";
+  historyChips.innerHTML = items
+    .map(
+      (item) => `
+        <button
+          type="button"
+          class="history-chip"
+          data-query="${escapeHtml(item)}"
+          title="${escapeHtml(item)}"
+        >
+          ${escapeHtml(item)}
+        </button>
+      `
+    )
+    .join("");
+
+  historyChips.querySelectorAll(".history-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const query = chip.dataset.query || "";
+      if (input) input.value = query;
+      goToResults(query);
+    });
+  });
+}
+
 function goToResults(query) {
-  const nextUrl = buildResultsUrl(query);
+  const q = String(query || "").trim();
+  const nextUrl = buildResultsUrl(q);
   if (!nextUrl) return;
+
+  pushRecentSearch(q);
   window.location.href = nextUrl;
 }
 
 form?.addEventListener("submit", (event) => {
   event.preventDefault();
   goToResults(input?.value || "");
-});
-
-chips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    const query = chip.dataset.query || "";
-    if (input) input.value = query;
-    goToResults(query);
-  });
 });
 
 sourceModeSelect?.addEventListener("change", () => {
@@ -262,4 +322,5 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+renderRecentSearches();
 loadSourcesForFilter();

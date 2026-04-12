@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas — About</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/about.css" />
+</head>
+<body>
+  <div class="about-page">
+    <div class="about-bg" aria-hidden="true">
+      <div class="about-bg-image"></div>
+      <div class="about-bg-shade"></div>
+      <div class="about-bg-grain"></div>
+    </div>
+
+    <header class="atlas-nav">
+      <div class="atlas-nav-inner">
+        <a href="/" class="atlas-nav-brand">
+          <span class="atlas-nav-logo">ATLAS</span>
+          <span class="atlas-nav-sub">Subtitle Search Engine</span>
+        </a>
+
+        <nav class="atlas-nav-menu" aria-label="Primary">
+          <a href="/" class="atlas-nav-link">Home</a>
+          <a href="/library" class="atlas-nav-link">Library</a>
+          <a href="/archive" class="atlas-nav-link">Archive</a>
+          <a href="/about" class="atlas-nav-link atlas-nav-link-active">About</a>
+        </nav>
+
+        <div class="atlas-nav-tools">
+          <button type="button" class="atlas-nav-orb" aria-label="Ambient mode">
+            <span class="atlas-nav-orb-core"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="about-shell">
+      <section class="about-hero">
+        <p class="about-kicker">About Atlas</p>
+        <h1 class="about-title">Search inside video subtitles, then jump to the exact spoken moment.</h1>
+        <p class="about-subtitle">
+          Atlas is a subtitle-first retrieval prototype for long-form YouTube video. It helps users
+          move from a remembered phrase or topic to the second that actually matters.
+        </p>
+
+        <div class="about-proof-row">
+          <div class="about-proof-pill">Subtitle-first retrieval</div>
+          <div class="about-proof-pill">Source-aware search</div>
+          <div class="about-proof-pill">Moment-level navigation</div>
+        </div>
+      </section>
+
+      <section class="about-overview">
+        <article class="overview-card overview-card-main">
+          <p class="section-kicker">What Atlas does</p>
+          <h2 class="section-title">It finds the moment, not just the video.</h2>
+          <p class="overview-text">
+            Instead of relying only on video titles or channel metadata, Atlas searches timestamped
+            subtitle segments, groups nearby hits, and turns them into navigable entry points.
+          </p>
+          <p class="overview-text">
+            The result is a cleaner workflow for finding spoken evidence, revisiting useful clips,
+            and moving through long videos with much less friction.
+          </p>
+        </article>
+
+        <article class="overview-card overview-card-flow">
+          <p class="section-kicker">Core workflow</p>
+          <div class="flow-mini">
+            <div class="flow-mini-step">
+              <span class="flow-mini-index">01</span>
+              <span class="flow-mini-label">Library</span>
+            </div>
+            <div class="flow-mini-arrow">→</div>
+            <div class="flow-mini-step">
+              <span class="flow-mini-index">02</span>
+              <span class="flow-mini-label">Search</span>
+            </div>
+            <div class="flow-mini-arrow">→</div>
+            <div class="flow-mini-step">
+              <span class="flow-mini-index">03</span>
+              <span class="flow-mini-label">Detail</span>
+            </div>
+            <div class="flow-mini-arrow">→</div>
+            <div class="flow-mini-step">
+              <span class="flow-mini-index">04</span>
+              <span class="flow-mini-label">Archive</span>
+            </div>
+          </div>
+
+          <div class="overview-microcopy">
+            Import sources, search subtitle evidence, inspect exact matches, and keep the moments
+            worth returning to.
+          </div>
+        </article>
+      </section>
+
+      <section class="about-section">
+        <div class="about-section-head">
+          <p class="section-kicker">Core capabilities</p>
+          <h2 class="section-title">What the current prototype already supports</h2>
+        </div>
+
+        <div class="capability-grid">
+          <article class="capability-card">
+            <h3 class="capability-title">Library import</h3>
+            <p class="capability-text">
+              Add playlist or single-video sources into a manageable subtitle collection.
+            </p>
+          </article>
+
+          <article class="capability-card">
+            <h3 class="capability-title">Exact phrase mode</h3>
+            <p class="capability-text">
+              Search direct spoken quotes with less noise and stronger precision.
+            </p>
+          </article>
+
+          <article class="capability-card">
+            <h3 class="capability-title">Source filter</h3>
+            <p class="capability-text">
+              Narrow retrieval to selected sources rather than searching the entire library.
+            </p>
+          </article>
+
+          <article class="capability-card">
+            <h3 class="capability-title">Moment detail view</h3>
+            <p class="capability-text">
+              Inspect grouped hits on a timeline and move directly to the matching segment.
+            </p>
+          </article>
+
+          <article class="capability-card">
+            <h3 class="capability-title">Archive</h3>
+            <p class="capability-text">
+              Save moments and full videos, then revisit them as a reusable research workflow.
+            </p>
+          </article>
+
+          <article class="capability-card">
+            <h3 class="capability-title">Summary-ready architecture</h3>
+            <p class="capability-text">
+              Supports local summarisation in development and cloud-based summarisation for public access.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <div class="about-section-head">
+          <p class="section-kicker">Interaction model</p>
+          <h2 class="section-title">How a search moves through Atlas</h2>
+        </div>
+
+        <div class="timeline-row">
+          <article class="timeline-card">
+            <div class="timeline-index">01</div>
+            <h3 class="timeline-title">Import sources</h3>
+            <p class="timeline-text">Build a searchable subtitle library from selected YouTube content.</p>
+          </article>
+
+          <article class="timeline-card">
+            <div class="timeline-index">02</div>
+            <h3 class="timeline-title">Search segments</h3>
+            <p class="timeline-text">Retrieve subtitle matches by phrase, topic, exact quote, or selected source.</p>
+          </article>
+
+          <article class="timeline-card">
+            <div class="timeline-index">03</div>
+            <h3 class="timeline-title">Inspect moments</h3>
+            <p class="timeline-text">Use preview playback and the detail page to understand where the query appears.</p>
+          </article>
+
+          <article class="timeline-card">
+            <div class="timeline-index">04</div>
+            <h3 class="timeline-title">Save and return</h3>
+            <p class="timeline-text">Keep important clips or full videos in Archive for later review.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-split">
+        <article class="about-panel">
+          <p class="section-kicker">Built for</p>
+          <h2 class="section-title">Focused video retrieval</h2>
+
+          <div class="use-grid">
+            <div class="use-card">
+              <h3 class="use-title">Research and review</h3>
+              <p class="use-text">Useful when users need to return to exact spoken evidence rather than browse entire videos again.</p>
+            </div>
+
+            <div class="use-card">
+              <h3 class="use-title">Long-form content</h3>
+              <p class="use-text">Especially suited to interviews, podcasts, discussions, and news videos with dense spoken information.</p>
+            </div>
+
+            <div class="use-card">
+              <h3 class="use-title">Repeat exploration</h3>
+              <p class="use-text">Archive turns one-off retrieval into a workflow that supports revisiting and comparison over time.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="about-panel">
+          <p class="section-kicker">Next direction</p>
+          <h2 class="section-title">Where Atlas can grow</h2>
+
+          <div class="future-tags">
+            <span class="future-tag">Public web deployment</span>
+            <span class="future-tag">AI-assisted overview</span>
+            <span class="future-tag">Cross-lingual search</span>
+            <span class="future-tag">Richer ranking</span>
+            <span class="future-tag">Comparative retrieval</span>
+            <span class="future-tag">Stronger summary UX</span>
+          </div>
+
+          <p class="about-panel-text">
+            The current prototype focuses on a clean retrieval workflow first. Future development can
+            extend this with more advanced AI assistance, broader deployment, and multilingual support.
+          </p>
+        </article>
+      </section>
+
+      <section class="about-endcap">
+        <div class="about-endcap-copy">
+          <p class="section-kicker">Atlas</p>
+          <h2 class="about-endcap-title">A cleaner path from remembered language to exact video evidence.</h2>
+          <p class="about-endcap-text">
+            Atlas is designed to reduce the distance between a search phrase and a useful moment.
+          </p>
+        </div>
+
+        <div class="about-endcap-actions">
+          <a href="/" class="about-cta primary">Start searching</a>
+          <a href="/library" class="about-cta">Open Library</a>
+          <a href="/archive" class="about-cta">View Archive</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
